@@ -322,6 +322,7 @@ def run(**kwargs):
                 # Update Policy
                 baseline = sess.run(pi.baseline, feed_dict={pi.obs: history.get_all_obs()})
 
+                # Advantage is Q-baseline
                 advantage = history.get_all_rewards(discount, use_reward_to_go) - baseline.reshape([-1])
 
                 sess.run([pi.update, pi.update_baseline], feed_dict={pi.obs: history.get_all_obs(),
@@ -330,6 +331,7 @@ def run(**kwargs):
                                                                      pi.target_q_values: history.get_all_rewards(discount, use_reward_to_go) })
             else:
                 # Update Policy
+                # Without baseline, advantages are just Q values
                 sess.run(pi.update, feed_dict={pi.obs: history.get_all_obs(),
                                                pi.target_actions: history.get_all_actions(),
                                                pi.advantages: history.get_all_rewards(discount, use_reward_to_go)})
