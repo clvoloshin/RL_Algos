@@ -118,6 +118,7 @@ class REINFORCE():
                     (3) learning rate
         '''
 
+        # This is a Critic. Value function estimation
         self.baseline = build_nn(self.obs,
                                  1, # baseline is a scalar
                                  'baseline',
@@ -163,10 +164,13 @@ class History():
     def get_all_actions(self):
         return np.hstack([path['actions'] for path in self.sequences])
 
-    def get_all_rewards(self, discount, use_reward_to_go = False):
+    def get_all_rewards(self):
+        return np.hstack([path['rewards'] for path in self.sequences])
+
+    def get_discounted_rewards(self, discount, use_reward_to_go = False):
         if use_reward_to_go:
             # If reward_to_go then use the future rewards at every step in the path:
-            # Q(t) = \sum_{i=t}^T x[i] * gamma^{i-t}, not a function of t
+            # Q(t) = \sum_{i=t}^T x[i] * gamma^{i-t} = \sum_{i=0}^{T-t} x[t+i] gamma^i
             return np.hstack([self.discount_rewards(path['rewards'], discount) for path in self.sequences])
         else:
             # If not reward_to_go then use the total reward at every step in the path:
@@ -211,6 +215,9 @@ def run(**kwargs):
     load_model=kwargs['load_model']
     use_baseline=kwargs['use_baseline']
     use_reward_to_go=kwargs['use_reward_to_go']
+    use_GAE=kwargs['use_GAE']
+    gae_lambda=kwargs['gae_lambda']
+    
 
 
     ################################################################
@@ -323,18 +330,49 @@ def run(**kwargs):
                 baseline = sess.run(pi.baseline, feed_dict={pi.obs: history.get_all_obs()})
 
                 # Advantage is Q-baseline
-                advantage = history.get_all_rewards(discount, use_reward_to_go) - baseline.reshape([-1])
+                if use_GAE:  # Generalized Advantage Estimation
+
+                    # Shulman et al. High-dimensional continuous control using generalized advantage estimation
+                    # Definition:
+                    # (1) \delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
+                    # (2) A_t = \sum_{n=0}^\infty (\gamma \lambda)^n \delta_{t+n}, GAE
+                    # In the finite time horizon case, V(s_t) = r_t = 0 \forall t>T
+                    # Hence,
+                    #   delta_t = 0 \forall t>T
+                    # Thus,
+                    # A_t = \sum_{n=0}^{T-t} (\gamma \lambda)^n \delta_{t+n}
+                    #
+                    # GAE(gamma, 0) => A_t = r_t + \gamma V(s_{t+1}) - V(s_t)
+                    # GAE(gamma, 1) => A_t = \sum_{n=0}^\infty \gamma^n r_{t+n} - V(s_t) 
+                    #
+                    r_t = np.array([path['rewards'] for path in history.sequences])
+                    episode_cutoffs = np.hstack([0, np.cumsum(history.timesteps)])
+
+                    # add 0 to end of every v because V(s_{T+1}) = 0 
+                    v_t = [ np.hstack([baseline[start_idx:stop_idx].T[0], 0]) for start_idx,stop_idx in zip(episode_cutoffs[:-1], episode_cutoffs[1:])]
+
+                    delta_t = [r_t[episode] + discount * v_t[episode][1:] - v_t[episode][:-1] for episode in range(r_t.shape[0])]
+
+                    advantage = np.hstack([History.discount_rewards(delta_t[episode], discount * gae_lambda) for episode in range(r_t.shape[0])])
+
+                else:    
+                    # Notice this is equivalent to GAE(gamma, 1) (ie. gae_lambda = 1)
+                    advantage = history.get_discounted_rewards(discount, use_reward_to_go) - baseline.reshape([-1])
 
                 sess.run([pi.update, pi.update_baseline], feed_dict={pi.obs: history.get_all_obs(),
                                                                      pi.target_actions: history.get_all_actions(),
+
+
                                                                      pi.advantages: advantage,
-                                                                     pi.target_q_values: history.get_all_rewards(discount, use_reward_to_go) })
+                                                                     pi.target_q_values: history.get_discounted_rewards(discount, use_reward_to_go) })
             else:
                 # Update Policy
                 # Without baseline, advantages are just Q values
                 sess.run(pi.update, feed_dict={pi.obs: history.get_all_obs(),
+
+
                                                pi.target_actions: history.get_all_actions(),
-                                               pi.advantages: history.get_all_rewards(discount, use_reward_to_go)})
+                                               pi.advantages: history.get_discounted_rewards(discount, use_reward_to_go)})
 
             # Log diagnostics
             returns = history.get_total_reward_per_sequence()
@@ -361,6 +399,7 @@ def main():
     parser.add_argument('--use_baseline', '-bl', action='store_true')
     parser.add_argument('--use_reward_to_go', '-rtg', action='store_true')
     parser.add_argument('--discount', type=float, default=1.0)
+    parser.add_argument('--gae_lambda', type=float, default=1.0)
     parser.add_argument('--iterations', '-n', type=int, default=100)
     parser.add_argument('--batch_size', '-b', type=int, default=1000)
     parser.add_argument('--sequence_length', '-seq', type=int, default=0)
@@ -370,6 +409,7 @@ def main():
     parser.add_argument('--num_layers', '-l', type=int, default=2)
     parser.add_argument('--num_units', '-u', type=int, default=32)
     parser.add_argument('--load_model', '-load', action='store_true')
+    parser.add_argument('--use_GAE', '-GAE', action='store_true') # Generalized Advantage Estimation
     # parser.add_argument('--remove_prev_runs', '-rm', action='store_true')
     args = parser.parse_args()
 
@@ -402,7 +442,9 @@ def main():
         seed=args.seed,
         num_layers=args.num_layers,
         num_units=args.num_units,
-        load_model=args.load_model)
+        load_model=args.load_model,
+        use_GAE=args.use_GAE,
+        gae_lambda=args.gae_lambda)
 
 if __name__ == "__main__":
     main()
