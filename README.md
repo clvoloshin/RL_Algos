@@ -1,5 +1,6 @@
 # RL_Algos
-Replicating Reinforcement Algorithms
+OpenAI Requests for Research & Replicating Some Reinforcement Algorithms
+
 
 Example use:
 ```
