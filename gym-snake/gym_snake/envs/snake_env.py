@@ -8,7 +8,7 @@ from snake_utils import get_state
 from gym.envs.classic_control import rendering
 from viewer import newViewer
 # from cautious_snake import CautiousSnake
-
+# import pdb
 
 class SnakeEnv(gym.Env):
   #metadata = {'render.modes': ['human']}
@@ -17,7 +17,7 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 600, screen_height=400, viewer=None, number_of_snakes = 1):
+    def __init__(self, screen_width = 600, screen_height=400, viewer=None, number_of_snakes = 2):
         self.viewer = viewer
         self.number_of_snakes = number_of_snakes #1 = Classic. >1 is multiplayer
         
@@ -50,44 +50,32 @@ class SnakeEnv(gym.Env):
 
         food_eaten = []
         rewards_n = [] 
-        for count,idx in enumerate(self.idxs_of_alive_snakes):
-            snake = self.snakes[idx]
-            snake.set_heading(action_n[count])
-            try:
-                snake.move(self.snakes, self.screen_width, self.screen_height)
-            except:
-                snake.move()
-            which_food = snake.eat(self.food)
-            if which_food is not None:
-                food_eaten.append(which_food)
-                rewards_n.append(1)
+        count = 0
+        for snake in self.snakes:
+            if snake.alive:
+                snake.set_heading(action_n[count])
+                count += 1
+                try:
+                    snake.move(self.snakes, self.screen_width, self.screen_height)
+                except:
+                    snake.move()
+                which_food = snake.eat(self.food)
+                if which_food is not None:
+                    food_eaten.append(which_food)
+                    rewards_n.append(1)
+                else:
+                    rewards_n.append(0)
             else:
                 rewards_n.append(0)
 
         self.food = [x for idx,x in enumerate(self.food) if idx not in food_eaten]
 
-        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth, self.use_grayscale)
-        
-
-        states_n = []
-        if not self.use_raw:
-            for i in self.idxs_of_alive_snakes:
-                snake_i_copy_of_state = self.state.copy()            
-                for j in self.idxs_of_alive_snakes:
-                    body = np.array(self.snakes[j].body)
-                    if i != j:
-                        snake_i_copy_of_state[body[:,0],body[:,1]] = 1. # Enemy are 1 <- arbitrary. Assumes grayscale
-                    else:
-                        snake_i_copy_of_state[body[:,0],body[:,1]] = .25 # You are .25 <- arbitrary. Assumes grayscale
-                states_n.append(snake_i_copy_of_state)
-        else:
-            for i in self.idxs_of_alive_snakes:
-                states_n.append(self.state.copy())
+        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
 
         done_n = np.array([True]*self.number_of_snakes)
         done_n[self.idxs_of_alive_snakes] = False
 
-        return states_n, rewards_n, done_n
+        return self.state, rewards_n, done_n
 
     def reset(self):
         starting_locs = []
@@ -96,7 +84,7 @@ class SnakeEnv(gym.Env):
             start_y_loc = np.random.randint(1, self.screen_height-1, size = self.number_of_snakes + self.start_number_of_food)
             starting_locs = list(set(zip(start_x_loc, start_y_loc)))
 
-        self.snakes = [Snake(self.action_space,
+        self.snakes = [CautiousSnake(self.action_space,
                              start_x = starting_locs[idx][0], 
                              start_y = starting_locs[idx][1], 
                              color = np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
@@ -110,24 +98,24 @@ class SnakeEnv(gym.Env):
                           start_y = starting_locs[idx][1],
                           growth = self.growth) for idx in range(self.number_of_snakes, self.number_of_snakes+self.start_number_of_food)]
 
-        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth, self.use_grayscale)
+        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
 
-        states_n = []
-        if not self.use_raw:
-            for i in self.idxs_of_alive_snakes:
-                snake_i_copy_of_state = self.state.copy()            
-                for j in self.idxs_of_alive_snakes:
-                    body = np.array(self.snakes[j].body)
-                    if i != j:
-                        snake_i_copy_of_state[body[:,0],body[:,1]] = 1. # Enemy are 1 <- arbitrary. Assumes grayscale
-                    else:
-                        snake_i_copy_of_state[body[:,0],body[:,1]] = .25 # You are .25 <- arbitrary. Assumes grayscale
-                states_n.append(snake_i_copy_of_state)
-        else:
-            for i in self.idxs_of_alive_snakes:
-                states_n.append(self.state.copy())
+        # states_n = []
+        # if not self.use_raw:
+        #     for i in self.idxs_of_alive_snakes:
+        #         snake_i_copy_of_state = self.state.copy()            
+        #         for j in self.idxs_of_alive_snakes:
+        #             body = np.array(self.snakes[j].body)
+        #             if i != j:
+        #                 snake_i_copy_of_state[body[:,0],body[:,1]] = 1. # Enemy are 1 <- arbitrary. Assumes grayscale
+        #             else:
+        #                 snake_i_copy_of_state[body[:,0],body[:,1]] = .25 # You are .25 <- arbitrary. Assumes grayscale
+        #         states_n.append(snake_i_copy_of_state)
+        # else:
+        #     for i in self.idxs_of_alive_snakes:
+        #         states_n.append(self.state.copy())
 
-        return states_n                
+        return self.state               
     
     def render(self, mode='human', close=False):
         if self.viewer == None:

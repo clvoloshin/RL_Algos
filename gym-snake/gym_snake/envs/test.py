@@ -77,7 +77,7 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 
 scaler = 10
 viewer = rendering.SimpleImageViewer()
-env = snake_env.SnakeEnv(screen_width = 100/scaler, screen_height = 100/scaler, number_of_snakes=1)
+env = snake_env.SnakeEnv(screen_width = 100/scaler, screen_height = 100/scaler, number_of_snakes=2)
 env.reset()
 
 rgb = env.render('rgb_array') 
@@ -94,7 +94,7 @@ for i in range(10000):
         # key = read_single_keypress()
         states_n, rewards_n, done_n = env.step([reverse_action_space[str(snake.heading[0])][str(snake.heading[1])] for snake in np.array(env.snakes)[env.idxs_of_alive_snakes]])
 
-        print states_n, rewards_n, done_n
+        print rewards_n, done_n
         # if env.snakes[0].alive and env.snakes[1].alive:
         #     key = read_single_keypress()
         #     env.step([actions[key]] + ['up'])
