@@ -84,7 +84,7 @@ class SnakeEnv(gym.Env):
             start_y_loc = np.random.randint(1, self.screen_height-1, size = self.number_of_snakes + self.start_number_of_food)
             starting_locs = list(set(zip(start_x_loc, start_y_loc)))
 
-        self.snakes = [CautiousSnake(self.action_space,
+        self.snakes = [Snake(self.action_space,
                              start_x = starting_locs[idx][0], 
                              start_y = starting_locs[idx][1], 
                              color = np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
