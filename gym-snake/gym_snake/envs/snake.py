@@ -1,9 +1,9 @@
 
-class Snake():
+class Snake(object):
     def __init__(self, 
                  action_space,
                  color = [0,0,0], 
-                 direction = 'up', 
+                 direction = '0', 
                  start_x = 100, 
                  start_y = 100):
         '''

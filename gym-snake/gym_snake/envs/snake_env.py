@@ -1,15 +1,13 @@
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
-from snake import Snake
-from food import Food
-import numpy as np
-from snake_utils import get_state
 from gym.envs.classic_control import rendering
 from viewer import newViewer
-import SnakeWorld
+from world import SnakeWorld
+import numpy as np
 # from cautious_snake import CautiousSnake
-# import pdb
+
+
 
 class SnakeEnv(gym.Env):
   #metadata = {'render.modes': ['human']}
@@ -18,9 +16,9 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 600, screen_height=400, viewer=None, number_of_snakes = 2):
+    def __init__(self, screen_width = 20, screen_height=20, viewer=None, n_actors = 2):
         self.viewer = viewer
-        self.number_of_snakes = number_of_snakes #1 = Classic. >1 is multiplayer
+        self.n_actors = n_actors #1 = Classic. >1 is multiplayer
         
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -29,14 +27,19 @@ class SnakeEnv(gym.Env):
         self.growth = 1
         
         self.state = None
-        self.world = SnakeWorld(self.screen_width,self.screen_height,self.min_amount_of_food)
+        self.world = SnakeWorld(self.screen_width,
+                                self.screen_height,
+                                self.n_actors, 
+                                self.min_amount_of_food, 
+                                self.start_number_of_food,
+                                self.growth)
 
     def step(self, action_n):
         
         return self.world.step(action_n) 
 
     def reset(self):
-        
+
         return self.world.reset()               
     
     def render(self, mode='human', close=False):
@@ -49,7 +52,7 @@ class SnakeEnv(gym.Env):
             for pixel in snake.body:
                 self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
 
-        for food in self.food:
+        for food in self.world.food:
             for pixel in food.location:
                 self.viewer.draw_point(pixel, color = (food.color[0], food.color[1], food.color[2]))
 
