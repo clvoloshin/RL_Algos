@@ -16,7 +16,7 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 20, screen_height=20, viewer=None, n_actors = 2):
+    def __init__(self, screen_width = 10, screen_height=10, viewer=None, n_actors = 2):
         self.viewer = viewer
         self.n_actors = n_actors #1 = Classic. >1 is multiplayer
         

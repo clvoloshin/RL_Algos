@@ -63,6 +63,8 @@ def run(**kwargs):
     seed=kwargs['seed']
     games_played_per_epoch=kwargs['games_played_per_epoch']
     load_model = False
+    mcts_iterations=kwargs['mcts_iterations']
+
 
 
     ################################################################
@@ -76,7 +78,7 @@ def run(**kwargs):
     # SETUP GYM + RL ALGO
     ################################################################
     env = gym.make('snake-v0') # Make the gym environment
-    maximum_number_of_steps = max_seq_length or 10# env.spec.max_episode_steps # Maximum length for episodes
+    maximum_number_of_steps = max_seq_length #or env.max_episode_steps # Maximum length for episodes
    
 
 
@@ -124,7 +126,7 @@ def run(**kwargs):
 
         tic = time.time()
         total_timesteps = 0
-        history = History(1000)
+        history = History(5000)
 
         for iteration in range(iteration_offset, iteration_offset + iterations):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
@@ -137,7 +139,7 @@ def run(**kwargs):
                 saver.save(sess,os.path.join(logdir,'model-'+str(iteration)+'.cptk'))
                 print "Saved Model. Timestep count: %s" % iteration
 
-                
+
                 # print 'Evalauting new model against previous best'
                 # arena = Arena(lambda x: np.argmax(pmcts.getActionProb(x, temp=0)),
                 #               lambda x: np.argmax(nmcts.getActionProb(x, temp=0)), self.game)
@@ -195,7 +197,7 @@ def run(**kwargs):
                     for actor in np.arange(env.n_actors):
                         if roots[actor] is None:
                             roots[actor] = Node(None, deepcopy(env.world), 1, env.n_actors, len(env.world.action_space), actor, Ps=P[actor])
-                        pi.append(mcts.run(sess, network, deepcopy(env.world), roots[actor], 10))
+                        pi.append(mcts.run(sess, network, deepcopy(env.world), roots[actor], mcts_iterations))
                         acts.append(np.random.choice(len(env.world.action_space), p = pi[-1]))
                         roots[actor] = roots[actor].children[str(acts[-1])]
                         roots[actor].parent = None
@@ -271,13 +273,12 @@ def main():
     parser.add_argument('--iterations', '-n', type=int, default=100)
     parser.add_argument('--batch_size', '-b', type=int, default=1000)
     parser.add_argument('--num_batches', '-n_batch', type=int, default=10) # num batch/epoch
-    parser.add_argument('--sequence_length', '-seq', type=int, default=0)
+    parser.add_argument('--sequence_length', '-seq', type=int, default=200)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--n_experiments', '-num_exp', type=int, default=1)
-    parser.add_argument('--num_layers', '-l', type=int, default=2)
-    parser.add_argument('--num_units', '-u', type=int, default=32)
     parser.add_argument('--games_played_per_epoch', '-gpe', type=int, default=10)
+    parser.add_argument('--mcts_iterations', '-mcts', type=int, default=1500)
     args = parser.parse_args()
 
     if not(os.path.exists('output')):
@@ -304,10 +305,9 @@ def main():
         animate=args.animate,
         logdir=logdir,
         seed=args.seed,
-        num_layers=args.num_layers,
-        num_units=args.num_units,
         num_batches=args.num_batches,
-        games_played_per_epoch=args.games_played_per_epoch)
+        games_played_per_epoch=args.games_played_per_epoch,
+        mcts_iterations=args.mcts_iterations)
 
 if __name__ == "__main__":
     main()
