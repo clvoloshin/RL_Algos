@@ -1,8 +1,6 @@
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
-from gym.envs.classic_control import rendering
-from viewer import newViewer
 from world import SnakeWorld
 import numpy as np
 # from cautious_snake import CautiousSnake
@@ -44,6 +42,8 @@ class SnakeEnv(gym.Env):
     
     def render(self, mode='human', close=False):
         if self.viewer == None:
+            from gym.envs.classic_control import rendering
+            from viewer import newViewer
             self.viewer = newViewer(self.screen_width, self.screen_height)
         #self. viewer.render(return_rgb_array = mode=='rgb_array')
 

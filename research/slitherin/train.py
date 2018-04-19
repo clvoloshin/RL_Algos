@@ -7,7 +7,6 @@ import gym
 import gym_snake
 import scipy.sparse as sparse
 from copy import deepcopy
-from gym.envs.classic_control import rendering
 from history import History
 from action_policy_network import Policy
 from mcts.mcts import *
@@ -177,6 +176,7 @@ def run(**kwargs):
                 while not done_n.all():
                     if animate_episode:
                         if not viewer:
+                            from gym.envs.classic_control import rendering
                             viewer = rendering.SimpleImageViewer()
                         rgb = env.render('rgb_array')
                         scaler = 10
