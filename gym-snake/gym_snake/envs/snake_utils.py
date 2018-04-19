@@ -56,32 +56,32 @@ def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
 
     idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive]
 
-    if len(idxs_of_alive_snakes) > 0:
-        boards = get_boards(snakes, num_rows, num_cols)
+    # if len(idxs_of_alive_snakes) > 0:
+    boards = get_boards(snakes, num_rows, num_cols)
 
-        food_board = sparse.csr_matrix((num_rows,num_cols))
-        for food in all_food:
-            food_board[food.location[0][0],food.location[0][1]] = 1
+    food_board = sparse.csr_matrix((num_rows,num_cols))
+    for food in all_food:
+        food_board[food.location[0][0],food.location[0][1]] = 1
 
 
-        total_board = sum(boards) + food_board
+    total_board = sum(boards) + food_board
 
-        # Add more food if necessary
-        food_to_add = min_amount_of_food - len(all_food)
-        while food_to_add > 0:
-            start_x_loc = np.random.randint(0, num_rows, size = 1)
-            start_y_loc = np.random.randint(0, num_cols, size = 1)
-            if total_board[start_x_loc, start_y_loc] == 0:
-                food_board[start_x_loc, start_y_loc] = 1
-                total_board[start_x_loc, start_y_loc] = 1
-                all_food += [Food(start_x = start_x_loc,
-                                   start_y = start_y_loc,
-                                   growth = growth)]
-                food_to_add -= 1
+    # Add more food if necessary
+    food_to_add = min_amount_of_food - len(all_food)
+    while food_to_add > 0:
+        start_x_loc = np.random.randint(0, num_rows, size = 1)
+        start_y_loc = np.random.randint(0, num_cols, size = 1)
+        if total_board[start_x_loc, start_y_loc] == 0:
+            food_board[start_x_loc, start_y_loc] = 1
+            total_board[start_x_loc, start_y_loc] = 1
+            all_food += [Food(start_x = start_x_loc,
+                               start_y = start_y_loc,
+                               growth = growth)]
+            food_to_add -= 1
 
-        return boards + [food_board], idxs_of_alive_snakes
-    else:
-        return [], []
+    return boards + [food_board], idxs_of_alive_snakes
+    # else:
+    #     return [], []
 
 # def get_boards_old(snakes, num_rows, num_cols):
 #     '''
