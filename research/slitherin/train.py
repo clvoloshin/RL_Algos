@@ -200,7 +200,7 @@ def run(**kwargs):
 
             while True:
                 network.buffer.games_played += 1
-                if (network.buffer.games_played-1 % 10 ==0):
+                if (((network.buffer.games_played) % 10) == 0):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 obs = env.reset()
                 raw_observations = []
