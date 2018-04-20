@@ -147,16 +147,15 @@ class DQN(object):
                                     self.training: True,
                                     self.learning_rate: learning_rate_schedule.value(self.epoch)} )
 
-
+        to_write = self.sess.run(self.summarize) # ,  { self.state: np.array([[y.A for y in x] for x in obs]),self.next_state: np.array([[y.A for y in x] for x in new_obs]),self.action: act,self.done: done,self.reward: rew,self.training: True} )
         
+        self.summary_writer.add_summary(to_write, self.epoch)
+        
+        self.summary_writer.flush()
+
         if self.epoch % self.update_freq == 0:
             self.sess.run(self.set_new_network)
             
-            to_write = self.sess.run(self.summarize,  { self.state: np.array([[y.A for y in x] for x in obs]),self.next_state: np.array([[y.A for y in x] for x in new_obs]),self.action: act,self.done: done,self.reward: rew,self.training: True} )
-        
-            self.summary_writer.add_summary(to_write, self.epoch)
-            self.summary_writer.flush()
-
         self.epoch += 1
 
 
