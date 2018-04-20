@@ -7,12 +7,13 @@ import gym
 import gym_snake
 import scipy.sparse as sparse
 from copy import deepcopy
-from history import History
-from action_policy_network import Policy
-from mcts.mcts import *
-from mcts.graph import Node
-
-
+from utils.history import History
+from utils.action_policy_network import create_residual
+from utils.mcts.mcts import *
+from utils.mcts.graph import Node
+from utils.dqn import DQN
+from utils.monitor import Monitor
+from utils.schedules import LinearSchedule
 
 def get_data(obs):
     assert obs.shape[0] < 3
@@ -63,8 +64,11 @@ def run(**kwargs):
     games_played_per_epoch=kwargs['games_played_per_epoch']
     load_model = False
     mcts_iterations=kwargs['mcts_iterations']
+    batches_per_epoch=kwargs['batches_per_epoch']
+    headless=kwargs['headless']
 
-
+    if headless:
+        import matplotlib
 
     ################################################################
     # SEEDS
@@ -80,23 +84,40 @@ def run(**kwargs):
     maximum_number_of_steps = max_seq_length #or env.max_episode_steps # Maximum length for episodes
    
 
-
-    mcts = MCTS(UCB(np.sqrt(2)), backup, len(env.world.action_space), env.n_actors)
-
-
-
-    network = Policy(env)
-
     ################################################################
     # TF BOILERPLATE
     ################################################################
 
     tf_config = tf.ConfigProto(inter_op_parallelism_threads=1, intra_op_parallelism_threads=1) 
     sess = tf.Session(config=tf_config)
-    saver = tf.train.Saver(max_to_keep=1)
-    summary_writer = tf.summary.FileWriter(logdir) 
+
+    summary_writers = []
+    for idx in np.arange(env.n_actors):
+        summary_writers.append(tf.summary.FileWriter(os.path.join(logdir,'tensorboard','snake_%s' % idx) ))
+
+    summary_writers.append(tf.summary.FileWriter(os.path.join(logdir,'tensorboard','training_stats') ))    
 
     with tf.Session() as sess:
+        network = DQN( 
+                     sess,
+                     create_residual(2),
+                     [(env.world.number_of_snakes+1)*2, env.world.screen_width,env.world.screen_height], 
+                     summary_writers[-1],
+                     n_actions=4, 
+                     batch_size=batch_size,
+                     gamma=.99,
+                     update_freq=1000,
+                     ddqn=True, # double dqn
+                     buffer_size = 10000,
+                     clip_grad = None,
+                     batches_per_epoch = batches_per_epoch
+                     )
+
+        monitor = Monitor(os.path.join(logdir,'gifs'))
+        epsilon = LinearSchedule(20)
+
+        saver = tf.train.Saver(max_to_keep=2)
+        # summary_writer = tf.summary.FileWriter(logdir) 
 
         ## Load model from where you left off
         ## Does not play nice w/ plots in tensorboard at the moment
@@ -110,14 +131,15 @@ def run(**kwargs):
             except:
                 print ('Failed to load. Starting from scratch')
                 sess.run(tf.global_variables_initializer())
+                sess.run(tf.local_variables_initializer())
                 iteration_offset = 0   
         else:
             sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
             iteration_offset = 0
 
-        summary_writer.add_graph(sess.graph)
-
-        
+        summary_writers[0].add_graph(sess.graph)
 
         ################################################################
         # Train Loop
@@ -125,45 +147,61 @@ def run(**kwargs):
 
         tic = time.time()
         total_timesteps = 0
-        history = History(5000)
+
+        while not network.buffer.full():
+            network.buffer.games_played += 1
+            print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
+            obs = env.reset()
+            raw_observations = []
+            raw_observations.append(np.array(obs))
+
+            done_n = np.array([False]*env.n_actors)
+            steps = 0
+            length_alive = np.array([0] * env.n_actors)
+            while not done_n.all():
+                length_alive[env.world.idxs_of_alive_snakes] += 1
+                ob = get_data(np.array(raw_observations)[-2:])
+                acts = network.greedy_select(ob, epsilon.value(0)) 
+                acts = [str(x) for x in acts]
+      
+                # Next step
+                obs, reward_n, done_n = env.step(acts[-1])
+                raw_observations.append(np.array(obs))
+                steps += 1
+
+                network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
+                              np.array(acts), # action
+                              np.array(reward_n), #rewards
+                              np.array(get_data(np.array(raw_observations)[-2:])), #new state
+                              np.array(done_n) #done
+                              )
+
+                # terminate the collection of data if the controller shows stability
+                # for a long time. This is a good thing.
+                if steps > maximum_number_of_steps:
+                    done_n[:] = True
+
+        print 'Filled Buffer'
+        
 
         for iteration in range(iteration_offset, iteration_offset + iterations):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
-
+            network.buffer.soft_reset()
             timesteps_in_iteration = 0
-            history.reset()
-
 
             if (iteration % 10 == 0):
                 saver.save(sess,os.path.join(logdir,'model-'+str(iteration)+'.cptk'))
                 print "Saved Model. Timestep count: %s" % iteration
 
-
-                # print 'Evalauting new model against previous best'
-                # arena = Arena(lambda x: np.argmax(pmcts.getActionProb(x, temp=0)),
-                #               lambda x: np.argmax(nmcts.getActionProb(x, temp=0)), self.game)
-                # pwins, nwins, draws = arena.playGames(self.args.arenaCompare)
-
-                # print('NEW/PREV WINS : %d / %d ; DRAWS : %d' % (nwins, pwins, draws))
-                # if pwins+nwins > 0 and float(nwins)/(pwins+nwins) < self.args.updateThreshold:
-                #     print('REJECTING NEW MODEL')
-                #     self.nnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
-                # else:
-                #     print('ACCEPTING NEW MODEL')
-                #     self.nnet.save_checkpoint(folder=self.args.checkpoint, filename=self.getCheckpointFile(i))
-                #     self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='best.pth.tar')   
-
-
-            game_num = 0
             while True:
-                game_num += 1
-                print 'Game number: %s' % game_num
+                network.buffer.games_played += 1
+                print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
                 obs = env.reset()
+                raw_observations = []
+                raw_observations.append(np.array(obs))
 
 
-                raw_observations, observations, actions, rewards, pis = [], [], [], [], []
-
-                animate_episode = (history.get_total_timesteps()==0) and (iteration % 10 == 0) and animate
+                animate_episode = ((network.buffer.games_played-1)==0) and (iteration % 1000 == 0) and animate
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
@@ -172,98 +210,71 @@ def run(**kwargs):
                 viewer = None
 
                 length_alive = np.array([0] * env.n_actors)
-                roots = [None] * env.n_actors
                 while not done_n.all():
                     if animate_episode:
-                        if not viewer:
+                        if (not viewer) and (not headless):
                             from gym.envs.classic_control import rendering
                             viewer = rendering.SimpleImageViewer()
-                        rgb = env.render('rgb_array')
+
+                        rgb = env.render('rgb_array', headless = headless)
                         scaler = 10
-                        upscaled=repeat_upsample(rgb,scaler,scaler)
-                        viewer.imshow(upscaled)
-                        time.sleep(.000001)
+                        rgb=repeat_upsample(rgb,scaler,scaler)
+
+                        if not headless:
+                            
+                            viewer.imshow(rgb)
+                            time.sleep(.05)
+
+                        monitor.add(rgb, iteration, network.buffer.games_played)
+
 
                     length_alive[env.world.idxs_of_alive_snakes] += 1
 
-                    raw_observations.append(np.array(obs))
+                    
                     ob = get_data(np.array(raw_observations)[-2:])
-                    
-                    P, v = sess.run([network.softmax_policy, network.pred_Q], feed_dict={network.obs: np.array([[y.A for y in x] for x in ob]), 
-                                                            network.training_flag: False})
-                    
-                    pi = []
-                    acts = []
-                    for actor in np.arange(env.n_actors):
-                        if roots[actor] is None:
-                            roots[actor] = Node(None, deepcopy(env.world), 1, env.n_actors, len(env.world.action_space), actor, Ps=P[actor])
-                        pi.append(mcts.run(sess, network, deepcopy(env.world), roots[actor], mcts_iterations))
-                        acts.append(np.random.choice(len(env.world.action_space), p = pi[-1]))
-                        roots[actor] = roots[actor].children[str(acts[-1])]
-                        roots[actor].parent = None
 
-                    pis.append(pi)
-                    actions.append([str(x) for x in acts])
+                    acts = network.greedy_select(ob, epsilon.next()) 
 
-                    observations.append(ob)
-
-                                      
-                    
-
-
-
-                    # actions.append([str(x) for x in action])
-                    
+                    acts = [str(x) for x in acts]
+          
                     # Next step
-                    obs, reward_n, done_n = env.step(actions[-1])
-                    rewards.append(reward_n)
+                    obs, reward_n, done_n = env.step(acts[-1])
+                    raw_observations.append(np.array(obs))
                     steps += 1
+
+                    network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
+                                  np.array(acts), # action
+                                  np.array(reward_n), #rewards
+                                  np.array(get_data(np.array(raw_observations)[-2:])), #new state
+                                  np.array(done_n) #done
+                                  )
 
                     # terminate the collection of data if the controller shows stability
                     # for a long time. This is a good thing.
                     if steps > maximum_number_of_steps:
                         done_n[:] = True
 
-                history.append(obs=np.array(observations), 
-                               actions=np.array(actions), 
-                               rewards=np.array(rewards),
-                               policies=np.array(pis),
-                               lengths=np.array(length_alive))
-                
-                if history.games_played > games_played_per_epoch:
+                if viewer:
+                    viewer.close()
+
+                if network.buffer.games_played >= games_played_per_epoch:
                     break
 
+            monitor.make_gifs(iteration)
+            network.train_step()
+            
 
-            # pdb.set_trace()
-            for batch in range(num_batches):
-                print batch
-                obs_batch, act_batch, rew_batch, policies_batch = history.sample(batch_size, discount)
-
-                sess.run(network.train, feed_dict={network.learning_rate: 3e-4, 
-                                                   network.training_flag: True,
-                                                   network.obs: np.array([[y.A for y in x] for x in obs_batch]), 
-                                                   network.target_policy: policies_batch, 
-                                                   network.target_Q: rew_batch })
-
-            history.soft_reset()
-
+            # for count, writer in enumerate(summary_writers):
+            #     summary = tf.Summary()
+            #     summary.value.add(tag='Steps Alive', simple_value=(network.buffer.get_last_lengths_of_games()[count::env.n_actors]).mean())
+            #     writer.add_summary(summary, iteration)
+            #     writer.flush()
 
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
             # ep_lengths = history.get_timesteps()
 
-
-            # summary = tf.Summary()
-            # summary.value.add(tag='Average Return', simple_value=np.mean(returns))
-            # summary.value.add(tag='Std Return', simple_value=np.std(returns))
-            # summary.value.add(tag='Max Return', simple_value=np.max(returns))
-            # summary.value.add(tag='Min Return', simple_value=np.min(returns))
-            # summary.value.add(tag='Episode Length Mean', simple_value=np.mean(ep_lengths))
-            # summary.value.add(tag='Episode Length Std', simple_value=np.std(ep_lengths))
-            # summary.value.add(tag='Timesteps in Batch', simple_value=history.get_total_timesteps())
-            # summary.value.add(tag='Total Timesteps', simple_value=total_timesteps)
-            # summary_writer.add_summary(summary, iteration)
-            # summary_writer.flush()
+            
 
 def main():
     import argparse
@@ -271,7 +282,7 @@ def main():
     parser.add_argument('--animate', action='store_true')
     parser.add_argument('--discount', type=float, default=1.0)
     parser.add_argument('--iterations', '-n', type=int, default=100)
-    parser.add_argument('--batch_size', '-b', type=int, default=1000)
+    parser.add_argument('--batch_size', '-b', type=int, default=32)
     parser.add_argument('--num_batches', '-n_batch', type=int, default=10) # num batch/epoch
     parser.add_argument('--sequence_length', '-seq', type=int, default=200)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
@@ -279,6 +290,8 @@ def main():
     parser.add_argument('--n_experiments', '-num_exp', type=int, default=1)
     parser.add_argument('--games_played_per_epoch', '-gpe', type=int, default=10)
     parser.add_argument('--mcts_iterations', '-mcts', type=int, default=1500)
+    parser.add_argument('--batches_per_epoch', '-bpe', type=int, default=1)
+    parser.add_argument('--headless', '-hless', action='store_true')
     args = parser.parse_args()
 
     if not(os.path.exists('output')):
@@ -307,7 +320,9 @@ def main():
         seed=args.seed,
         num_batches=args.num_batches,
         games_played_per_epoch=args.games_played_per_epoch,
-        mcts_iterations=args.mcts_iterations)
+        mcts_iterations=args.mcts_iterations,
+        batches_per_epoch=args.batches_per_epoch,
+        headless=args.headless)
 
 if __name__ == "__main__":
     main()

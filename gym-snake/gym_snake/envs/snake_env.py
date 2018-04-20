@@ -14,7 +14,7 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 10, screen_height=10, viewer=None, n_actors = 2):
+    def __init__(self, screen_width = 20, screen_height=20, viewer=None, n_actors = 1):
         self.viewer = viewer
         self.n_actors = n_actors #1 = Classic. >1 is multiplayer
         
@@ -40,26 +40,41 @@ class SnakeEnv(gym.Env):
 
         return self.world.reset()               
     
-    def render(self, mode='human', close=False):
-        if self.viewer == None:
-            from gym.envs.classic_control import rendering
-            from viewer import newViewer
-            self.viewer = newViewer(self.screen_width, self.screen_height)
-        #self. viewer.render(return_rgb_array = mode=='rgb_array')
-
-        for idx in self.world.idxs_of_alive_snakes:
-            snake = self.world.snakes[idx]
-            for pixel in snake.body:
-                self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
-
-        for food in self.world.food:
-            for pixel in food.location:
-                self.viewer.draw_point(pixel, color = (food.color[0], food.color[1], food.color[2]))
+    def render(self, mode='human', close=False, headless= False):
+        
+        if not headless:
+            if self.viewer == None:
+                from gym.envs.classic_control import rendering
+                from viewer import newViewer
+                self.viewer = newViewer(self.screen_width, self.screen_height)
+            #self. viewer.render(return_rgb_array = mode=='rgb_array')
 
 
-        return self.viewer.render(return_rgb_array = mode=='rgb_array')
+            for idx in self.world.idxs_of_alive_snakes:
+                snake = self.world.snakes[idx]
+                for pixel in snake.body:
+                    self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
 
+            for food in self.world.food:
+                for pixel in food.location:
+                    self.viewer.draw_point(pixel, color = (food.color[0], food.color[1], food.color[2]))
 
+            return self.viewer.render(return_rgb_array = mode=='rgb_array')
+
+        else:
+
+            rgb_array = np.ones((self.screen_width, self.screen_height, 3))
+
+            for idx in self.world.idxs_of_alive_snakes:
+                snake = self.world.snakes[idx]
+                for pixel in snake.body:
+                    rgb_array[pixel[0],pixel[1],:] = snake.color
+
+            for food in self.world.food:
+                for pixel in food.location:
+                    rgb_array[pixel[0],pixel[1],:] = food.color
+
+            return rgb_array
 
 
     def seed(self, seed=None):

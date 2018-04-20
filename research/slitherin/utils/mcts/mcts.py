@@ -25,6 +25,7 @@ def find_leaf(node, tree_policy, raw_obs = [], world=None, a_t = None, rew = Non
             all_actions = node.sample_others(a_t)
             obs,rew,_ = world.step(all_actions)
             raw_obs.append(np.array(obs))
+            raw_obs = raw_obs[-2:]
         else:
             assert rew is not None, 'a_t and rew must come together'
 
@@ -37,6 +38,7 @@ def find_leaf(node, tree_policy, raw_obs = [], world=None, a_t = None, rew = Non
         is_dead = world.done_n[node.id]
 
         raw_obs.append(np.array(obs))
+        raw_obs = raw_obs[-2:]
         
         if is_dead:
             return node, world, np.array(rew)[node.id], raw_obs
@@ -51,7 +53,7 @@ def backup(node, q):
     while node is not None:
 
         node.N += 1 #visit count
-        node.W += q#/(node.n_actors * len(node.actions)) #Expected total action value
+        node.W += q/(node.n_actors * len(node.actions)) #Expected total action value
         node.Q = node.W/node.N #Mean action value
 
         node = node.parent

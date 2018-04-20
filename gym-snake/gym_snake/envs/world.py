@@ -7,6 +7,7 @@ import scipy.sparse as sparse
 import pdb
 from copy import copy, deepcopy
 
+import time
 
 class SnakeWorld(object):
     def __init__(self, 
@@ -53,10 +54,7 @@ class SnakeWorld(object):
         for count,snake in enumerate(self.snakes):
             if snake.alive:
                 snake.set_heading(action_n[count])
-                try:
-                    snake.move(self.snakes, self.screen_width, self.screen_height)
-                except:
-                    snake.move()
+                snake.move()
                 which_food = snake.eat(self.food)
                 if which_food is not None:
                     food_eaten.append(which_food)
@@ -70,7 +68,6 @@ class SnakeWorld(object):
 
         last_done_n = self.done_n
         self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
-
 
         self.done_n = np.array([True]*self.number_of_snakes)
         self.done_n[self.idxs_of_alive_snakes] = False
