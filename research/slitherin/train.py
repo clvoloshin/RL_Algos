@@ -116,7 +116,7 @@ def run(**kwargs):
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(20)
+        epsilon_schedule = LinearSchedule(20, 1.0, .05)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-2),(1000,1e-3),(10000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -203,6 +203,7 @@ def run(**kwargs):
                 if (((network.buffer.games_played) % 10) == 0):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 obs = env.reset()
+                epsilon_schedule.reset()
                 raw_observations = []
                 raw_observations.append(np.array(obs))
 
