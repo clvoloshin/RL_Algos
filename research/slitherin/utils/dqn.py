@@ -38,9 +38,7 @@ class DQN(object):
         self.buffer_size = buffer_size
         self.clip_grad = clip_grad
 
-        self.momentum = .9
-        self.learning_rate = 3e-4 #make a schedule?
-        self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
+        self.momentum = .9      
 
         self.buffer = History(self.buffer_size)
 
@@ -72,6 +70,7 @@ class DQN(object):
             self.done = tf.placeholder(tf.float32, [None] , name='done') 
             self.reward = tf.placeholder(tf.float32, [None] , name='reward')
             self.training = tf.placeholder(tf.bool, name='training_flag')
+            self.learning_rate = tf.placeholder(tf.float32, None , name='learning_rate') 
 
             self.net = self.model(self.state, self.training, self.n_actions, scope='net')
             self.target_net = self.model(self.state, self.training, self.n_actions, scope='target_net')
@@ -97,6 +96,7 @@ class DQN(object):
             self.error = self.Q - tf.stop_gradient(self.next_Q)
 
             self.loss = self.loss_func(self.error)
+            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
             if self.clip_grad is not None:
                 gradients = self.optimizer.compute_gradients(self.loss, self.net_variables)
@@ -127,7 +127,7 @@ class DQN(object):
 
         return [action]
 
-    def train_step(self):
+    def train_step(self, learning_rate_schedule):
         # Copy the QNetwork weights to the Target QNetwork.
         if self.epoch == 0:
             self.sess.run(self.set_new_network)
@@ -144,7 +144,8 @@ class DQN(object):
                                     self.action: act,
                                     self.done: done,
                                     self.reward: rew,
-                                    self.training: True} )
+                                    self.training: True,
+                                    self.learning_rate: learning_rate_schedule.value(self.epoch)} )
 
 
         

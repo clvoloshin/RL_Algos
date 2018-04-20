@@ -13,7 +13,7 @@ from utils.mcts.mcts import *
 from utils.mcts.graph import Node
 from utils.dqn import DQN
 from utils.monitor import Monitor
-from utils.schedules import LinearSchedule
+from utils.schedules import LinearSchedule, PiecewiseSchedule
 
 def get_data(obs):
     assert obs.shape[0] < 3
@@ -66,6 +66,8 @@ def run(**kwargs):
     mcts_iterations=kwargs['mcts_iterations']
     batches_per_epoch=kwargs['batches_per_epoch']
     headless=kwargs['headless']
+    update_freq=kwargs['update_freq']
+    buffer_size=kwargs['buffer_size']
 
     if headless:
         import matplotlib
@@ -106,15 +108,16 @@ def run(**kwargs):
                      n_actions=4, 
                      batch_size=batch_size,
                      gamma=.99,
-                     update_freq=1000,
+                     update_freq=update_freq,
                      ddqn=True, # double dqn
-                     buffer_size = 10000,
+                     buffer_size = buffer_size,
                      clip_grad = None,
                      batches_per_epoch = batches_per_epoch
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon = LinearSchedule(20)
+        epsilon_schedule = LinearSchedule(20)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-2),(1000,1e-3),(10000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -161,7 +164,7 @@ def run(**kwargs):
             while not done_n.all():
                 length_alive[env.world.idxs_of_alive_snakes] += 1
                 ob = get_data(np.array(raw_observations)[-2:])
-                acts = network.greedy_select(ob, epsilon.value(0)) 
+                acts = network.greedy_select(ob, epsilon_schedule.value(0)) 
                 acts = [str(x) for x in acts]
       
                 # Next step
@@ -182,26 +185,29 @@ def run(**kwargs):
                     done_n[:] = True
 
         print 'Filled Buffer'
-        
+
 
         for iteration in range(iteration_offset, iteration_offset + iterations):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
             network.buffer.soft_reset()
             timesteps_in_iteration = 0
 
-            if (iteration % 10 == 0):
+            if (iteration % update_freq == 0):
                 saver.save(sess,os.path.join(logdir,'model-'+str(iteration)+'.cptk'))
                 print "Saved Model. Timestep count: %s" % iteration
 
+            total_number_of_steps_in_iteration = 0
+
             while True:
                 network.buffer.games_played += 1
-                print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
+                if (network.buffer.games_played-1 % 10 ==0):
+                    print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 obs = env.reset()
                 raw_observations = []
                 raw_observations.append(np.array(obs))
 
 
-                animate_episode = ((network.buffer.games_played-1)==0) and (iteration % 1000 == 0) and animate
+                animate_episode = ((network.buffer.games_played-1)==0) and (iteration % update_freq == 0) and animate
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
@@ -223,7 +229,7 @@ def run(**kwargs):
                         if not headless:
                             
                             viewer.imshow(rgb)
-                            time.sleep(.05)
+                            time.sleep(.1)
 
                         monitor.add(rgb, iteration, network.buffer.games_played)
 
@@ -233,7 +239,7 @@ def run(**kwargs):
                     
                     ob = get_data(np.array(raw_observations)[-2:])
 
-                    acts = network.greedy_select(ob, epsilon.next()) 
+                    acts = network.greedy_select(ob, epsilon_schedule.next()) 
 
                     acts = [str(x) for x in acts]
           
@@ -254,6 +260,8 @@ def run(**kwargs):
                     if steps > maximum_number_of_steps:
                         done_n[:] = True
 
+                total_number_of_steps_in_iteration += steps
+
                 if viewer:
                     viewer.close()
 
@@ -261,7 +269,7 @@ def run(**kwargs):
                     break
 
             monitor.make_gifs(iteration)
-            network.train_step()
+            network.train_step(learning_rate_schedule)
             
 
             # for count, writer in enumerate(summary_writers):
@@ -291,6 +299,8 @@ def main():
     parser.add_argument('--games_played_per_epoch', '-gpe', type=int, default=10)
     parser.add_argument('--mcts_iterations', '-mcts', type=int, default=1500)
     parser.add_argument('--batches_per_epoch', '-bpe', type=int, default=1)
+    parser.add_argument('--buffer_size', '-bs', type=int, default=10000)
+    parser.add_argument('--update_freq', '-uf', type=int, default=10000)
     parser.add_argument('--headless', '-hless', action='store_true')
     args = parser.parse_args()
 
@@ -322,7 +332,9 @@ def main():
         games_played_per_epoch=args.games_played_per_epoch,
         mcts_iterations=args.mcts_iterations,
         batches_per_epoch=args.batches_per_epoch,
-        headless=args.headless)
+        headless=args.headless,
+        update_freq=args.update_freq,
+        buffer_size=args.buffer_size)
 
 if __name__ == "__main__":
     main()

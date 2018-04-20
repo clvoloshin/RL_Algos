@@ -30,5 +30,6 @@ class Monitor(object):
         if epoch in self.images:
             for game_number in self.images[epoch]:
                 self.make_gif(os.path.join(self.save_dir,'%s_%s.gif' % (epoch, game_number)), epoch, game_number, fps=fps, scale=scale)
+            del self.images[epoch]                
 
 

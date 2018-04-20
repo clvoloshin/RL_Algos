@@ -63,16 +63,17 @@ class SnakeEnv(gym.Env):
 
         else:
 
-            rgb_array = np.ones((self.screen_width, self.screen_height, 3))
+            rgb_array = np.ones((self.screen_height, self.screen_width, 3))
 
             for idx in self.world.idxs_of_alive_snakes:
                 snake = self.world.snakes[idx]
                 for pixel in snake.body:
-                    rgb_array[pixel[0],pixel[1],:] = snake.color
-
+                    rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = snake.color # Assume (0,0) at bottom left for printing. 
+                                                                                           # Artifact from the way the gifs are created later
+                                                                                           # Has to be done for the gif to match up with the actual array of the board
             for food in self.world.food:
                 for pixel in food.location:
-                    rgb_array[pixel[0],pixel[1],:] = food.color
+                    rgb_array[self.screen_height - pixel[1] -1, pixel[0],:] = food.color
 
             return rgb_array
 
