@@ -18,7 +18,7 @@ class LinearSchedule(object):
         
         return self.value(self.steps_taken)
 
-    def reset():
+    def reset(self):
         self.steps_taken = None
 
 
