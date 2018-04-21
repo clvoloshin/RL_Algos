@@ -16,7 +16,8 @@ class SnakeWorld(object):
                  number_of_snakes,
                  min_amount_of_food,
                  start_number_of_food,
-                 growth):
+                 growth,
+                 boundary):
 
         self.action_space = {
                             '0' : [0,1],
@@ -31,6 +32,7 @@ class SnakeWorld(object):
         self.number_of_snakes = number_of_snakes
         self.start_number_of_food = start_number_of_food
         self.growth = growth
+        self.boundary = boundary
 
         self.idxs_of_alive_snakes = np.arange(self.number_of_snakes)
         self.use_grayscale = True
@@ -69,6 +71,8 @@ class SnakeWorld(object):
         last_done_n = self.done_n
         self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
 
+        self.state = [state + self.boundary for state in self.state] # add -1 boundary
+
         self.done_n = np.array([True]*self.number_of_snakes)
         self.done_n[self.idxs_of_alive_snakes] = False
 
@@ -100,7 +104,7 @@ class SnakeWorld(object):
                           growth = self.growth) for idx in range(self.number_of_snakes, self.number_of_snakes+self.start_number_of_food)]
 
         self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
-
+        self.state = [state + self.boundary for state in self.state] # add -1 boundary
         # states_n = []
         # if not self.use_raw:
         #     for i in self.idxs_of_alive_snakes:

@@ -155,6 +155,7 @@ def run(**kwargs):
             network.buffer.games_played += 1
             print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
             obs = env.reset()
+
             raw_observations = []
             raw_observations.append(np.array(obs))
 

@@ -37,13 +37,15 @@ def get_food_board(all_food, screen_width, screen_height, fill = 1):
 
     return sparse_matrix.tocsr()
 
+def check_if_snake_hit_boundary(snake, num_rows, num_cols):
+    snake.alive = snake.alive and (snake.body[0][0] > 0) and (snake.body[0][0] < (num_rows-1)) and (snake.body[0][1] > 0) and (snake.body[0][1] < (num_cols-1))
 def check_if_snake_self_intersected(snake):
     snake.alive = snake.alive and not (snake.body[0] in snake.body[1:])
 
 def check_if_snake_hit_other_snake(snake, other_snake):
     snake.alive = False if (snake.body[0] in other_snake.body) else snake.alive
 
-def check_which_snakes_are_still_alive(snakes):
+def check_which_snakes_are_still_alive(snakes, num_rows, num_cols):
     for i,snake in enumerate(snakes):
         if snake.alive:
             for j, other_snake in enumerate(snakes):
@@ -52,6 +54,7 @@ def check_which_snakes_are_still_alive(snakes):
                         check_if_snake_hit_other_snake(snake, other_snake)
                     else:
                         check_if_snake_self_intersected(snake)
+                        check_if_snake_hit_boundary(snake, num_rows, num_cols)
 
 def get_boards(snakes, num_rows, num_cols):
     boards = []
@@ -70,7 +73,7 @@ def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
 
     # check if snake is valid
     
-    check_which_snakes_are_still_alive(snakes) # kills snakes which hit other snakes or themselves
+    check_which_snakes_are_still_alive(snakes, num_rows, num_cols) # kills snakes which hit other snakes or themselves
 
     
     idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive]
@@ -89,8 +92,8 @@ def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
     
     food_to_add = min_amount_of_food - len(all_food)
     while food_to_add > 0:
-        start_x_loc = np.random.randint(0, num_rows, size = 1)
-        start_y_loc = np.random.randint(0, num_cols, size = 1)
+        start_x_loc = np.random.randint(1, num_rows-1, size = 1)
+        start_y_loc = np.random.randint(1, num_cols-1, size = 1)
         if total_board[start_x_loc, start_y_loc] == 0:
             food_board[start_x_loc, start_y_loc] = 1
             total_board[start_x_loc, start_y_loc] = 1
