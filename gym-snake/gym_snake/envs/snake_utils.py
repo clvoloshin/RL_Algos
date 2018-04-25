@@ -39,6 +39,7 @@ def get_food_board(all_food, screen_width, screen_height, fill = 1):
 
 def check_if_snake_hit_boundary(snake, num_rows, num_cols):
     snake.alive = snake.alive and (snake.body[0][0] > 0) and (snake.body[0][0] < (num_rows-1)) and (snake.body[0][1] > 0) and (snake.body[0][1] < (num_cols-1))
+
 def check_if_snake_self_intersected(snake):
     snake.alive = snake.alive and not (snake.body[0] in snake.body[1:])
 

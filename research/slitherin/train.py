@@ -116,7 +116,7 @@ def run(**kwargs):
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(20, 1.0, .05)
+        epsilon_schedule = LinearSchedule(20, 1.0, 0.0)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-2),(1000,1e-3),(10000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -241,7 +241,13 @@ def run(**kwargs):
                     
                     ob = get_data(np.array(raw_observations)[-2:])
 
-                    acts = network.greedy_select(ob, epsilon_schedule.next()) 
+                    # Control the exploration
+                    if network.buffer.games_played < (games_played_per_epoch/2):
+                        # play half of the games w/ full greedy strategy
+                        acts = network.greedy_select(ob, epsilon_schedule.value(1.)) # full greedy 
+                    else:
+                        # play other half w/ epsilon greedy
+                        acts = network.greedy_select(ob, epsilon_schedule.next()) # epsilon greedy
 
                     acts = [str(x) for x in acts]
           
@@ -274,11 +280,12 @@ def run(**kwargs):
             network.train_step(learning_rate_schedule)
             
 
-            # for count, writer in enumerate(summary_writers):
+            for count, writer in enumerate(summary_writers):
+                writer.flush()
             #     summary = tf.Summary()
             #     summary.value.add(tag='Steps Alive', simple_value=(network.buffer.get_last_lengths_of_games()[count::env.n_actors]).mean())
             #     writer.add_summary(summary, iteration)
-            #     writer.flush()
+            #     
 
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
