@@ -137,7 +137,6 @@ class DQN(object):
             # Sample experience from replay memory
             obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma)
 
-            pdb.set_trace()
             # Perform training
             _,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
                                   { self.state: np.array([[y.A for y in x] for x in obs]),
@@ -152,7 +151,7 @@ class DQN(object):
         
         self.summary_writer.add_summary(to_write, self.epoch)
         
-        self.summary_writer.flush()
+        #self.summary_writer.flush() # Dont flush here; flush in training loop
 
         if self.epoch % self.update_freq == 0:
             self.sess.run(self.set_new_network)
