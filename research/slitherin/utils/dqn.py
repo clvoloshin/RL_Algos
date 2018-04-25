@@ -93,7 +93,7 @@ class DQN(object):
                 self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.best_action, self.n_actions), 1)
 
             self.bellman = self.reward + self.gamma * self.next_Q * (1.0 - self.done)
-            self.error = self.Q - tf.stop_gradient(self.next_Q)
+            self.error = self.Q - tf.stop_gradient(self.bellman)
 
             self.loss = self.loss_func(self.error)
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
@@ -137,6 +137,7 @@ class DQN(object):
             # Sample experience from replay memory
             obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma)
 
+            pdb.set_trace()
             # Perform training
             _,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
                                   { self.state: np.array([[y.A for y in x] for x in obs]),
