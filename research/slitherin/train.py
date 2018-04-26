@@ -1,7 +1,9 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" #Should ideally check for GPU; assume exists for now
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 import pdb
 import time
 import numpy as np
-import os
 import tensorflow as tf
 import gym
 import gym_snake
