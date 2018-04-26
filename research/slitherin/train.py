@@ -113,7 +113,7 @@ def run(**kwargs):
                      update_freq=update_freq,
                      ddqn=True, # double dqn
                      buffer_size = buffer_size,
-                     clip_grad = 1.,
+                     clip_grad = 5.,
                      batches_per_epoch = batches_per_epoch
                      )
 
