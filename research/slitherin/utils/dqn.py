@@ -73,12 +73,13 @@ class DQN(object):
             self.learning_rate = tf.placeholder(tf.float32, None , name='learning_rate') 
 
             self.net = self.model(self.state, self.training, self.n_actions, scope='net')
-            self.target_net = self.model(self.state, self.training, self.n_actions, scope='target_net')
+            self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
 
             self.net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/net')
             self.target_net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/target_net')
 
-            self.Q = tf.reduce_sum(self.net * tf.one_hot(self.action, self.n_actions), 1)
+            self.best_action = tf.argmax(self.net, 1) # calculates best action given state
+            self.Q = tf.reduce_sum(self.net * tf.one_hot(self.action, self.n_actions), 1) #performs action a_t at state s_t
             
             # not currently resettable => TODO
             #self.streaming_Q, self.streaming_Q_update = tf.contrib.metrics.streaming_mean(tf.reduce_mean(self.Q))
@@ -87,12 +88,12 @@ class DQN(object):
             
 
             if self.ddqn:
-                self.net_ = self.model(self.state, self.training, self.n_actions, scope='net', reuse=True)
-                self.best_action = tf.argmax(self.net_, 1)
-                self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.best_action, self.n_actions), 1)
+                self.net_ = self.model(self.next_state, self.training, self.n_actions, scope='net', reuse=True)
+                self.next_best_action = tf.argmax(self.net_, 1)
+                self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.next_best_action, self.n_actions), 1)
             else:
-                self.best_action = tf.argmax(self.target_net, 1)
-                self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.best_action, self.n_actions), 1)
+                self.next_best_action = tf.argmax(self.target_net, 1)
+                self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.next_best_action, self.n_actions), 1)
 
             self.bellman = self.reward + self.gamma * self.next_Q * (1.0 - self.done)
             self.error = self.Q - tf.stop_gradient(self.bellman)
@@ -136,14 +137,13 @@ class DQN(object):
         if self.epoch == 0:
             self.sess.run(self.set_new_network)
 
-
         for batch_num in np.arange(self.batches_per_epoch):
             # Sample experience from replay memory
             obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma)
 
             # Perform training
             #_,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
-            _ = self.sess.run([self.summarize, self.train],
+            loss,_ = self.sess.run([self.loss, self.train],
                                   { self.state: obs,
                                     self.next_state: new_obs,
                                     self.action: act,
@@ -162,6 +162,18 @@ class DQN(object):
             self.sess.run(self.set_new_network)
             
         self.epoch += 1
+
+    def summaryStringToDict(self, summ_str):
+        idx = 0
+        ret_dict = {}
+        while idx < len(summ_str):
+            item_len = struct.unpack('B', summ_str[idx+1])[0]
+            name_len = struct.unpack('B', summ_str[idx+3])[0]
+            name = summ_str[idx+4:idx+4+name_len]
+            value = struct.unpack('<f', summ_str[idx+5+name_len:idx+9+name_len])[0]
+            ret_dict[name] = value
+            idx += item_len + 2
+        return ret_dict
 
 
 
