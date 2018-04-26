@@ -202,6 +202,8 @@ def run(**kwargs):
 
             total_number_of_steps_in_iteration = 0
 
+            total_reward = np.array([0]*env.n_actors)
+
             while True:
                 network.buffer.games_played += 1
                 if (((network.buffer.games_played) % 10) == 0):
@@ -216,6 +218,7 @@ def run(**kwargs):
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
+                
 
                 # Runs policy, collects observations and rewards
                 viewer = None
@@ -260,6 +263,10 @@ def run(**kwargs):
                     # Next step
                     obs, reward_n, done_n = env.step(acts[-1])
 
+                    if network.buffer.games_played < (games_played_per_epoch/2):
+                        # see how good the learned policy becomes over time.
+                        # Need the 'if' condition because the other games are played randomly, affecting the stats
+                        total_reward += np.array(reward_n)
                     # raw_observations.append(np.array(obs))
                     steps += 1
 
@@ -286,13 +293,13 @@ def run(**kwargs):
             monitor.make_gifs(iteration)
             network.train_step(learning_rate_schedule)
             
-
             for count, writer in enumerate(summary_writers):
+                if count < (len(summary_writers) - 1):
+                    summary = tf.Summary()
+                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]/float(games_played_per_epoch/2)))
+                    writer.add_summary(summary, iteration)
                 writer.flush()
-            #     summary = tf.Summary()
-            #     summary.value.add(tag='Steps Alive', simple_value=(network.buffer.get_last_lengths_of_games()[count::env.n_actors]).mean())
-            #     writer.add_summary(summary, iteration)
-            #     
+                    
 
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
