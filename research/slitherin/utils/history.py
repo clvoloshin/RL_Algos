@@ -20,6 +20,8 @@ class History(object):
         self.games_played = 0
         self.max_buffer_size = max_buffer_size
         self.buffer_size = 0
+        self.thrown_away = 0
+        self.total_seen = 0
 
     def append(self,**kwargs):
         '''
@@ -55,6 +57,7 @@ class History(object):
         self.done.append(done)
 
         self.buffer_size += 1
+        self.total_seen += 1
 
         while self.buffer_size > self.max_buffer_size:
                 self.obs.pop(0)
@@ -63,12 +66,15 @@ class History(object):
                 self.new_obs.pop(0)
                 self.done.pop(0)
                 self.buffer_size -= 1
+                self.thrown_away += 1
 
     def sample(self, N, discount):
         idxs = np.array([False] * self.buffer_size)
         idxs[np.random.choice(np.arange(self.buffer_size), N)] = True
+    
+        obs,acts,rews,new_obs,done = np.vstack(self.obs)[idxs], np.hstack(self.act)[idxs], np.hstack(self.rew)[idxs], np.vstack(self.new_obs)[idxs], np.hstack(self.done)[idxs]
 
-        return np.vstack(self.obs)[idxs], np.hstack(self.act)[idxs], np.hstack(self.rew)[idxs], np.vstack(self.new_obs)[idxs], np.hstack(self.done)[idxs]
+        return np.array([[x.A for x in y] for y in obs]), acts, rews, np.array([[x.A for x in y] for y in new_obs]), done
 
     def get_last_lengths_of_games(self):
         return np.array(self.lengths[-self.games_played:])

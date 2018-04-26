@@ -103,7 +103,7 @@ def run(**kwargs):
         network = DQN( 
                      sess,
                      create_residual(2),
-                     [(env.world.number_of_snakes+1)*2, env.world.screen_width,env.world.screen_height], 
+                     [(env.world.number_of_snakes)*2 + 1, env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
                      batch_size=batch_size,
@@ -156,29 +156,32 @@ def run(**kwargs):
             print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
             obs = env.reset()
 
-            raw_observations = []
-            raw_observations.append(np.array(obs))
-
             done_n = np.array([False]*env.n_actors)
             steps = 0
             length_alive = np.array([0] * env.n_actors)
             while not done_n.all():
                 length_alive[env.world.idxs_of_alive_snakes] += 1
-                ob = get_data(np.array(raw_observations)[-2:])
-                acts = network.greedy_select(ob, epsilon_schedule.value(0)) 
+                last_obs = obs
+                acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.value(0)) 
                 acts = [str(x) for x in acts]
       
                 # Next step
                 obs, reward_n, done_n = env.step(acts[-1])
-                raw_observations.append(np.array(obs))
                 steps += 1
 
-                network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
-                              np.array(acts), # action
-                              np.array(reward_n), #rewards
-                              np.array(get_data(np.array(raw_observations)[-2:])), #new state
-                              np.array(done_n) #done
-                              )
+                # network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
+                #               np.array(acts), # action
+                #               np.array(reward_n), #rewards
+                #               np.array(get_data(np.array(raw_observations)[-2:])), #new state
+                #               np.array(done_n) #done
+                #               )
+
+                network.store(np.array(last_obs), # state
+                                  np.array(acts), # action
+                                  np.array(reward_n), #rewards
+                                  np.array(obs), #new state
+                                  np.array(done_n) #done
+                                  )
 
                 # terminate the collection of data if the controller shows stability
                 # for a long time. This is a good thing.
@@ -205,8 +208,8 @@ def run(**kwargs):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 obs = env.reset()
                 epsilon_schedule.reset()
-                raw_observations = []
-                raw_observations.append(np.array(obs))
+                # raw_observations = []
+                # raw_observations.append(np.array(obs))
 
 
                 animate_episode = ((network.buffer.games_played-1)==0) and (iteration % update_freq == 0) and animate
@@ -219,6 +222,7 @@ def run(**kwargs):
 
                 length_alive = np.array([0] * env.n_actors)
                 while not done_n.all():
+
                     if animate_episode:
                         if (not viewer) and (not headless):
                             from gym.envs.classic_control import rendering
@@ -231,7 +235,7 @@ def run(**kwargs):
                         if not headless:
                             
                             viewer.imshow(rgb)
-                            time.sleep(.1)
+                            time.sleep(.01)
 
                         monitor.add(rgb, iteration, network.buffer.games_played)
 
@@ -239,27 +243,30 @@ def run(**kwargs):
                     length_alive[env.world.idxs_of_alive_snakes] += 1
 
                     
-                    ob = get_data(np.array(raw_observations)[-2:])
+                    # ob = get_data(np.array(raw_observations)[-2:])
+                    last_obs = obs
 
                     # Control the exploration
                     if network.buffer.games_played < (games_played_per_epoch/2):
                         # play half of the games w/ full greedy strategy
-                        acts = network.greedy_select(ob, epsilon_schedule.value(1.)) # full greedy 
+                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.value(np.inf)) # full greedy 
+
                     else:
                         # play other half w/ epsilon greedy
-                        acts = network.greedy_select(ob, epsilon_schedule.next()) # epsilon greedy
+                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.next()) # epsilon greedy
 
                     acts = [str(x) for x in acts]
           
                     # Next step
                     obs, reward_n, done_n = env.step(acts[-1])
-                    raw_observations.append(np.array(obs))
+
+                    # raw_observations.append(np.array(obs))
                     steps += 1
 
-                    network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
+                    network.store(np.array(last_obs), # state
                                   np.array(acts), # action
                                   np.array(reward_n), #rewards
-                                  np.array(get_data(np.array(raw_observations)[-2:])), #new state
+                                  np.array(obs), #new state
                                   np.array(done_n) #done
                                   )
 

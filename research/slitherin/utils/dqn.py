@@ -80,8 +80,10 @@ class DQN(object):
 
             self.Q = tf.reduce_sum(self.net * tf.one_hot(self.action, self.n_actions), 1)
             
-            self.streaming_Q, self.streaming_Q_update = tf.contrib.metrics.streaming_mean(tf.reduce_mean(self.Q))
-            tf.summary.histogram("Q Value", self.streaming_Q)
+            # not currently resettable => TODO
+            #self.streaming_Q, self.streaming_Q_update = tf.contrib.metrics.streaming_mean(tf.reduce_mean(self.Q))
+            #tf.summary.histogram("Q Value", self.streaming_Q)
+            tf.summary.histogram("Q Value", tf.reduce_mean(self.Q))
             
 
             if self.ddqn:
@@ -107,8 +109,10 @@ class DQN(object):
             else:
                 self.train = self.optimizer.minimize(self.loss, var_list = self.net_variables)
 
-            self.streaming_loss, self.streaming_loss_update = tf.contrib.metrics.streaming_mean(self.loss)
-            tf.summary.scalar('Loss', self.streaming_loss)
+            # not currently resettable => TODO
+            #self.streaming_loss, self.streaming_loss_update = tf.contrib.metrics.streaming_mean(self.loss)
+            #tf.summary.scalar('Loss', self.streaming_loss)
+            tf.summary.scalar('Loss', tf.reduce_mean(self.loss))
             
             # tf.summary.scalar('Loss', self.loss)
             self.set_new_network = self.copy_to_target(self.net_variables, self.target_net_variables)
@@ -123,7 +127,7 @@ class DQN(object):
         if (epsilon > 0) and (np.random.uniform() <= epsilon):
             action = np.random.choice(np.arange(self.n_actions-1))
         else:
-            action = self.sess.run(self.best_action, {self.state:[[x.A for x in y] for y in state], self.training:False } )[0]
+            action = self.sess.run(self.best_action, {self.state: state, self.training:False } )[0]
 
         return [action]
 
@@ -138,16 +142,17 @@ class DQN(object):
             obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma)
 
             # Perform training
-            _,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
-                                  { self.state: np.array([[y.A for y in x] for x in obs]),
-                                    self.next_state: np.array([[y.A for y in x] for x in new_obs]),
+            #_,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
+            _ = self.sess.run([self.summarize, self.train],
+                                  { self.state: obs,
+                                    self.next_state: new_obs,
                                     self.action: act,
                                     self.done: done,
                                     self.reward: rew,
                                     self.training: True,
                                     self.learning_rate: learning_rate_schedule.value(self.epoch)} )
 
-        to_write = self.sess.run(self.summarize) # ,  { self.state: np.array([[y.A for y in x] for x in obs]),self.next_state: np.array([[y.A for y in x] for x in new_obs]),self.action: act,self.done: done,self.reward: rew,self.training: True} )
+        to_write = self.sess.run(self.summarize, { self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )
         
         self.summary_writer.add_summary(to_write, self.epoch)
         

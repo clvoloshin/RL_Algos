@@ -103,7 +103,17 @@ def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
                                growth = growth)]
             food_to_add -= 1
 
-    return boards.tolist() + [food_board], idxs_of_alive_snakes
+    # get heads
+    heads = []
+    for snake in snakes:
+        if snake.alive:
+            heads.append(sparse.coo_matrix(([1], ([snake.body[0][0]],[snake.body[0][1]])), 
+                                 shape = (num_rows, num_cols)).tocsr())
+        else:
+            heads.append(sparse.csr_matrix((num_rows, num_cols)))
+
+
+    return boards.tolist() + heads + [food_board], idxs_of_alive_snakes
     # else:
     #     return [], []
 

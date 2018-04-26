@@ -105,6 +105,8 @@ class SnakeWorld(object):
 
         self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
         self.state = [state + self.boundary for state in self.state] # add -1 boundary
+        self.rewards_n = []
+        self.done_n = np.array([False]*self.number_of_snakes)
         # states_n = []
         # if not self.use_raw:
         #     for i in self.idxs_of_alive_snakes:
