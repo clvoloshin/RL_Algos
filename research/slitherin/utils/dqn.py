@@ -38,7 +38,8 @@ class DQN(object):
         self.buffer_size = buffer_size
         self.clip_grad = clip_grad
 
-        self.momentum = .9      
+        self.momentum = .9
+        self.weight_decay = .9
 
         self.buffer = History(self.buffer_size)
 
@@ -98,7 +99,9 @@ class DQN(object):
             self.bellman = self.reward + self.gamma * self.next_Q * (1.0 - self.done)
             self.error = self.Q - tf.stop_gradient(self.bellman)
 
-            self.loss = self.loss_func(self.error)
+            
+            self.l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in self.net_variables]) * self.weight_decay
+            self.loss = self.loss_func(self.error) #+ self.l2_loss
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
             if self.clip_grad is not None:
