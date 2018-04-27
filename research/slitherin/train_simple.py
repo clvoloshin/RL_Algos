@@ -100,7 +100,7 @@ def run(**kwargs):
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations, 1.0, 0.01)
+        epsilon_schedule = LinearSchedule(iterations/10, 1.0, 0.01)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-4),(1000,1e-4),(10000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -168,11 +168,11 @@ def run(**kwargs):
         ################################################################
         # Train Loop
         ################################################################
-
+        network.buffer.soft_reset()
         total_number_of_steps_in_iteration = 0
+
         for iteration in range(iteration_offset, iteration_offset + iterations):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
-            network.buffer.soft_reset()
             timesteps_in_iteration = 0
 
             if (iteration % update_freq == 0):
@@ -188,7 +188,7 @@ def run(**kwargs):
                 _ = env.reset()
                 rgb = obs = env.render('rgb_array', headless = headless)/255.
 
-                animate_episode = ((network.buffer.games_played-1)==0) and (iteration % update_freq/2 == 0) and animate
+                animate_episode = (iteration % (update_freq/2) == 0) and animate
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
@@ -259,11 +259,11 @@ def run(**kwargs):
             for count, writer in enumerate(summary_writers):
                 if count < (len(summary_writers) - 1):
                     summary = tf.Summary()
-                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]/float(games_played_per_epoch/2)))
+                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
                     writer.add_summary(summary, iteration)
                 writer.flush()
                     
-
+            pdb.set_trace()
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
             # ep_lengths = history.get_timesteps()

@@ -92,7 +92,7 @@ class SnakeWorld(object):
         self.snakes = [Snake(self.action_space,
                              start_x = starting_locs[idx][0], 
                              start_y = starting_locs[idx][1], 
-                             color = np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
+                             color = [0,0,1]) for idx in range(self.number_of_snakes)]#np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
 
         # self.snakes = [Snake(self.action_space,
         #                      start_x = starting_locs[idx][0], 
