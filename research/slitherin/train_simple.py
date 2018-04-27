@@ -263,7 +263,6 @@ def run(**kwargs):
                     writer.add_summary(summary, iteration)
                 writer.flush()
                     
-            pdb.set_trace()
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
             # ep_lengths = history.get_timesteps()
