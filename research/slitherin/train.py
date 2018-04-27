@@ -10,7 +10,7 @@ import gym_snake
 import scipy.sparse as sparse
 from copy import deepcopy
 from utils.history import History
-from utils.action_policy_network import create_residual
+from utils.action_policy_network import create_residual, create_basic
 from utils.mcts.mcts import *
 from utils.mcts.graph import Node
 from utils.dqn import DQN
@@ -104,7 +104,7 @@ def run(**kwargs):
     with tf.Session() as sess:
         network = DQN( 
                      sess,
-                     create_residual(2),
+                     create_basic(3),
                      [(env.world.number_of_snakes)*2 + 1, env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
@@ -118,8 +118,8 @@ def run(**kwargs):
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(20, 1.0, 0.0)
-        learning_rate_schedule = PiecewiseSchedule([(0,1e-2),(1000,1e-3),(10000,1e-4)], outside_value=1e-4)
+        epsilon_schedule = LinearSchedule(20, 1.0, 0.05)
+        learning_rate_schedule = PiecewiseSchedule([(0,5e-3),(1000,1e-3),(10000,3e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -164,7 +164,7 @@ def run(**kwargs):
             while not done_n.all():
                 length_alive[env.world.idxs_of_alive_snakes] += 1
                 last_obs = obs
-                acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.value(0)) 
+                acts = network.greedy_select(np.array([[x.A for x in last_obs]]), 1.) 
                 acts = [str(x) for x in acts]
       
                 # Next step
@@ -212,6 +212,7 @@ def run(**kwargs):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 obs = env.reset()
                 epsilon_schedule.reset()
+
                 # raw_observations = []
                 # raw_observations.append(np.array(obs))
 
@@ -254,7 +255,7 @@ def run(**kwargs):
                     # Control the exploration
                     if network.buffer.games_played < (games_played_per_epoch/2):
                         # play half of the games w/ full greedy strategy
-                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.value(np.inf)) # full greedy 
+                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), -1. ) # full greedy 
 
                     else:
                         # play other half w/ epsilon greedy

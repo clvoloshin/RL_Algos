@@ -68,13 +68,16 @@ class History(object):
                 self.buffer_size -= 1
                 self.thrown_away += 1
 
-    def sample(self, N, discount):
+    def sample(self, N, discount, is_sparse=True):
         idxs = np.array([False] * self.buffer_size)
-        idxs[np.random.choice(np.arange(self.buffer_size), N)] = True
-    
-        obs,acts,rews,new_obs,done = np.vstack(self.obs)[idxs], np.hstack(self.act)[idxs], np.hstack(self.rew)[idxs], np.vstack(self.new_obs)[idxs], np.hstack(self.done)[idxs]
+        idxs[np.random.choice(np.arange(self.buffer_size), N, replace=False)] = True
 
-        return np.array([[x.A for x in y] for y in obs]), acts, rews, np.array([[x.A for x in y] for y in new_obs]), done
+        obs, acts, rews, new_obs, done = np.vstack(self.obs)[idxs], np.hstack(self.act)[idxs], np.hstack(self.rew)[idxs], np.vstack(self.new_obs)[idxs], np.hstack(self.done)[idxs]
+
+        if is_sparse:
+            return np.array([[x.A for x in y] for y in obs]), acts, rews, np.array([[x.A for x in y] for y in new_obs]), done
+        else:
+            return obs, acts, rews, new_obs, done
 
     def get_last_lengths_of_games(self):
         return np.array(self.lengths[-self.games_played:])
@@ -101,8 +104,11 @@ class History(object):
     def soft_reset(self):
         self.games_played = 0
 
-    def full(self):
-        return self.buffer_size == self.max_buffer_size
+    def full(self, N=None):
+        if N:
+            return self.buffer_size > min(N, self.max_buffer_size)
+        else:
+            return self.buffer_size == self.max_buffer_size
 
     @staticmethod
     def discount_rewards(x, gamma): 

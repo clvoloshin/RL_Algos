@@ -9,10 +9,10 @@ def get_implied_board(snake, screen_width, screen_height, fill = 1):
         Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its grayscale color
         '''        
         pixels = np.array(snake.body)
-        rows = pixels[:,0]
-        cols = pixels[:,1]
-        fill = fill + 10**-12 if fill == .5 else fill
         try:
+            rows = pixels[:,0]
+            cols = pixels[:,1]
+            fill = fill + 10**-12 if fill == .5 else fill
             sparse_matrix = sparse.coo_matrix(([fill]*snake.length, (rows,cols)), 
                                  shape = (screen_width, screen_height)) #.astype(np.uint8)
         except ValueError as ve:
@@ -26,13 +26,13 @@ def get_food_board(all_food, screen_width, screen_height, fill = 1):
     Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its grayscale color
     '''        
     pixels = np.array(all_food)
-    rows = pixels[:,0]
-    cols = pixels[:,1]
-    fill = fill + 10**-12 if fill == .5 else fill
     try:
+        rows = pixels[:,0]
+        cols = pixels[:,1]
+        fill = fill + 10**-12 if fill == .5 else fill
         sparse_matrix = sparse.coo_matrix(([fill]*rows.shape[0], (rows,cols)), 
                              shape = (screen_width, screen_height)) #.astype(np.uint8)
-    except ValueError as ve:
+    except: # occurs if no food
         return sparse.csr_matrix((screen_width, screen_height))
 
     return sparse_matrix.tocsr()

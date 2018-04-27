@@ -7,7 +7,6 @@ import pdb
 def conv_layer(input, filter, kernel, stride, padding='SAME', scope="conv"):
     with tf.name_scope(scope):
         network = tf.layers.conv2d(inputs=input, 
-                                   use_bias=False, 
                                    filters=filter, 
                                    kernel_size=kernel, 
                                    strides=stride, 
@@ -36,6 +35,36 @@ def linear(x, n_actions, scope) :
 
 def create_residual(n_resid_blocks):
     return lambda *args, **kwargs: Residual(n_resid_blocks,*args, **kwargs)
+
+def create_basic(n_conv_layers, transpose=True):
+    return lambda *args, **kwargs: Basic(n_conv_layers, transpose=transpose, *args, **kwargs)
+
+def Basic(n_conv_layers, input_x, training, n_actions, scope, reuse=False, transpose=True):
+    with tf.variable_scope(scope, reuse=reuse):
+        
+        with tf.variable_scope('input'):
+            if transpose:
+                x = tf.transpose(input_x, [0,2,3,1]) # NCHW to NHWC
+            else:
+                x = input_x
+            
+        with tf.variable_scope('conv_layers'):
+            for i in np.arange(n_conv_layers):
+                x = conv_layer(x, filter=64, kernel=[3, 3], stride=1, scope='conv_%s'% i)
+                x = relu(x)
+
+        with tf.variable_scope('out'):
+            x = conv_layer(x, filter=1, kernel=[1, 1], stride=1, scope='out'+'_conv1')
+            x = relu(x)
+
+            x = tf.reshape(x, [-1, int(np.prod(x.shape[1:]))])
+
+            x = linear(x, 256, scope='out_linear1')
+            x = relu(x)
+            x = linear(x, n_actions, scope='out')
+
+        return x
+
 
 def Residual(n_resid_blocks, input_x, training, n_actions, scope, reuse=False):
     with tf.variable_scope(scope, reuse=reuse):
@@ -173,5 +202,4 @@ class Policy(object):
 
         # correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(label, 1))
         # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
 

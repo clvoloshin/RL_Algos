@@ -24,7 +24,8 @@ class DQN(object):
                  ddqn=True, # double dqn
                  buffer_size = 10000,
                  clip_grad = None,
-                 batches_per_epoch = 1
+                 batches_per_epoch = 1,
+                 is_sparse = True
                  ):
 
         self.sess = sess
@@ -37,6 +38,7 @@ class DQN(object):
         self.ddqn = ddqn
         self.buffer_size = buffer_size
         self.clip_grad = clip_grad
+        self.is_sparse = is_sparse
 
         self.momentum = .9
         self.weight_decay = .9
@@ -104,14 +106,18 @@ class DQN(object):
             self.loss = self.loss_func(self.error) #+ self.l2_loss
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
+            self.extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # Updates batch norm layer, if exists
+
             if self.clip_grad is not None:
                 gradients = self.optimizer.compute_gradients(self.loss, self.net_variables)
                 for i, (grad, var) in enumerate(gradients):
                     if grad is not None:
                         gradients[i] = (tf.clip_by_norm(grad, self.clip_grad), var)
-                self.train = self.optimizer.apply_gradients(gradients)
+                with tf.control_dependencies(self.extra_update_ops):
+                    self.train = self.optimizer.apply_gradients(gradients)
             else:
-                self.train = self.optimizer.minimize(self.loss, var_list = self.net_variables)
+                with tf.control_dependencies(self.extra_update_ops):
+                    self.train = self.optimizer.minimize(self.loss, var_list = self.net_variables)
 
             # not currently resettable => TODO
             #self.streaming_loss, self.streaming_loss_update = tf.contrib.metrics.streaming_mean(self.loss)
@@ -129,7 +135,7 @@ class DQN(object):
 
     def greedy_select(self, state, epsilon):
         if (epsilon > 0) and (np.random.uniform() <= epsilon):
-            action = np.random.choice(np.arange(self.n_actions-1))
+            action = np.random.choice(np.arange(self.n_actions))
         else:
             action = self.sess.run(self.best_action, {self.state: state, self.training:False } )[0]
 
@@ -142,7 +148,7 @@ class DQN(object):
 
         for batch_num in np.arange(self.batches_per_epoch):
             # Sample experience from replay memory
-            obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma)
+            obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma, is_sparse=self.is_sparse)
 
             # Perform training
             #_,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
@@ -161,22 +167,10 @@ class DQN(object):
         
         #self.summary_writer.flush() # Dont flush here; flush in training loop
 
-        if self.epoch % self.update_freq == 0:
+        if (self.epoch % self.update_freq == 0):
             self.sess.run(self.set_new_network)
             
         self.epoch += 1
-
-    def summaryStringToDict(self, summ_str):
-        idx = 0
-        ret_dict = {}
-        while idx < len(summ_str):
-            item_len = struct.unpack('B', summ_str[idx+1])[0]
-            name_len = struct.unpack('B', summ_str[idx+3])[0]
-            name = summ_str[idx+4:idx+4+name_len]
-            value = struct.unpack('<f', summ_str[idx+5+name_len:idx+9+name_len])[0]
-            ret_dict[name] = value
-            idx += item_len + 2
-        return ret_dict
 
 
 
