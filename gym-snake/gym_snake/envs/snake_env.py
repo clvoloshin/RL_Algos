@@ -70,7 +70,7 @@ class SnakeEnv(gym.Env):
                     if x:
                         self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
                     else:
-                        self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]/2)) # Head should be slightly different in color
+                        self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]/2.)) # Head should be slightly different in color
 
             for food in self.world.food:
                 for pixel in food.location:
@@ -93,7 +93,7 @@ class SnakeEnv(gym.Env):
                                                                                            # Artifact from the way the gifs are created later
                                                                                            # Has to be done for the gif to match up with the actual array of the board
                     else:
-                        rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = snake.color/2 # Head should be slightly different in color
+                        rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = [snake.color[0], snake.color[1], snake.color[2]/2.] # Head should be slightly different in color
             for food in self.world.food:
                 for pixel in food.location:
                     rgb_array[self.screen_height - pixel[1] -1, pixel[0],:] = food.color
