@@ -65,7 +65,7 @@ def get_boards(snakes, num_rows, num_cols):
     return boards
 
 
-def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
+def get_state(snakes, all_food, num_rows, num_cols, growth):
     snakes = np.array(snakes)
 
     # gets previously alive snakes' boards
@@ -90,9 +90,10 @@ def get_state(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth):
     total_board = sum(boards) + food_board
 
     # Add more food if necessary
+    food_to_add = len(idxs_of_alive_snakes) - len(all_food) # MAke only as much food as alive snakes
     
-    food_to_add = min_amount_of_food - len(all_food)
-    while food_to_add > 0:
+    # Handle infinite loop that happens at the end of game
+    while (total_board.nnz <= ((total_board.shape[0]-2)*(total_board.shape[0]-2))-1) and (food_to_add > 0):
         start_x_loc = np.random.randint(1, num_rows-1, size = 1)
         start_y_loc = np.random.randint(1, num_cols-1, size = 1)
         if total_board[start_x_loc, start_y_loc] == 0:

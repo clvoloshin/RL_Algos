@@ -82,26 +82,29 @@ def run(**kwargs):
 
     summary_writers.append(tf.summary.FileWriter(os.path.join(logdir,'tensorboard','training_stats') ))    
 
+    def rgb2gray(rgb):
+        return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
+
     with tf.Session() as sess:
         network = DQN( 
                      sess,
-                     create_basic(3, transpose=False),
-                     [env.world.screen_width,env.world.screen_height,3], 
+                     create_basic(3, transpose=True),
+                     [1,env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
                      batch_size=batch_size,
                      gamma=.99,
                      update_freq=update_freq,
-                     ddqn=True, # double dqn
+                     ddqn=False, # double dqn
                      buffer_size = buffer_size,
-                     clip_grad = 5.,
+                     clip_grad = None,
                      batches_per_epoch = batches_per_epoch,
                      is_sparse = False
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations/10, 1.0, 0.01)
-        learning_rate_schedule = PiecewiseSchedule([(0,1e-4),(1000,1e-4),(10000,1e-4)], outside_value=1e-4)
+        epsilon_schedule = LinearSchedule(iterations/5, 1.0, 0.01)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(1000,5e-4),(10000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -139,24 +142,29 @@ def run(**kwargs):
             network.buffer.games_played += 1
             print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
             _ = env.reset()
-            obs = env.render('rgb_array', headless = headless)/255.
+            obs = env.render('rgb_array', headless = headless).astype(float)
+            obs /= obs.max()
+            obs = rgb2gray(obs)
 
             done_n = np.array([False]*env.n_actors)
             steps = 0
             while not done_n.all():
                 last_obs = obs
-                acts = network.greedy_select([last_obs], 1.) 
+                acts = network.greedy_select([[last_obs]], 1.) 
                 acts = [str(x) for x in acts]
       
                 # Next step
                 _, reward_n, done_n = env.step(acts[-1])
-                obs = env.render('rgb_array', headless = headless)/255.
+                obs = env.render('rgb_array', headless = headless).astype(float)
+                obs /= obs.max()
+                obs = rgb2gray(obs)
+
                 steps += 1
 
-                network.store(np.array([last_obs]), # state
+                network.store(np.array([[last_obs]]), # state
                                   np.array(acts), # action
                                   np.array(reward_n), #rewards
-                                  np.array([obs]), #new state
+                                  np.array([[obs]]), #new state
                                   np.array(done_n) #done
                                   )
 
@@ -186,9 +194,11 @@ def run(**kwargs):
                 if (((network.buffer.games_played) % 10) == 0):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
                 _ = env.reset()
-                rgb = obs = env.render('rgb_array', headless = headless)/255.
+                rgb = obs = env.render('rgb_array', headless = headless).astype(float)
+                obs /= obs.max()
+                obs = rgb2gray(obs)
 
-                animate_episode = (iteration % (update_freq/2) == 0) and animate
+                animate_episode = (iteration % (update_freq) == 0) and animate
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
@@ -219,13 +229,15 @@ def run(**kwargs):
                     last_obs = obs
 
                     # Control the exploration
-                    acts = network.greedy_select([last_obs], epsilon_schedule.value(network.epoch)) # epsilon greedy
+                    acts = network.greedy_select([[last_obs]], epsilon_schedule.value(network.epoch)) # epsilon greedy
 
                     acts = [str(x) for x in acts]
           
                     # Next step
                     _, reward_n, done_n = env.step(acts[-1])
-                    obs = env.render('rgb_array', headless = headless)/255.
+                    obs = env.render('rgb_array', headless = headless).astype(float)
+                    obs /= obs.max()
+                    obs = rgb2gray(obs)
 
                     total_reward += np.array(reward_n)
 
@@ -235,10 +247,10 @@ def run(**kwargs):
                     total_number_of_steps_in_iteration += 1
                     steps += 1
 
-                    network.store(np.array([last_obs]), # state
+                    network.store(np.array([[last_obs]]), # state
                                   np.array(acts), # action
                                   np.array(reward_n), #rewards
-                                  np.array([obs]), #new state
+                                  np.array([[obs]]), #new state
                                   np.array(done_n) #done
                                   )
 

@@ -14,8 +14,6 @@ class SnakeWorld(object):
                  screen_width,
                  screen_height,
                  number_of_snakes,
-                 min_amount_of_food,
-                 start_number_of_food,
                  growth,
                  boundary):
 
@@ -28,9 +26,10 @@ class SnakeWorld(object):
 
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.min_amount_of_food = min_amount_of_food
         self.number_of_snakes = number_of_snakes
-        self.start_number_of_food = start_number_of_food
+        #self.min_amount_of_food = number_of_snakes #np.random.randint(1,5) #...idk what this is supposed to really be
+        self.start_number_of_food = number_of_snakes #np.random.randint(self.min_amount_of_food,self.min_amount_of_food*3)
+
         self.growth = growth
         self.boundary = boundary
 
@@ -69,7 +68,7 @@ class SnakeWorld(object):
         self.food = [x for idx,x in enumerate(self.food) if idx not in food_eaten]
 
         last_done_n = self.done_n
-        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
+        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.growth)
 
         self.state = [state + self.boundary for state in self.state] # add -1 boundary
 
@@ -103,7 +102,7 @@ class SnakeWorld(object):
                           start_y = starting_locs[idx][1],
                           growth = self.growth) for idx in range(self.number_of_snakes, self.number_of_snakes+self.start_number_of_food)]
 
-        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.min_amount_of_food, self.growth)
+        self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.growth)
         self.state = [state + self.boundary for state in self.state] # add -1 boundary
         self.rewards_n = []
         self.done_n = np.array([False]*self.number_of_snakes)

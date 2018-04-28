@@ -4,13 +4,16 @@ from tensorflow.contrib.framework import arg_scope
 import numpy as np
 import pdb
 
-def conv_layer(input, filter, kernel, stride, padding='SAME', scope="conv"):
-    with tf.name_scope(scope):
-        network = tf.layers.conv2d(inputs=input, 
+def conv_layer(x, filter, kernel, stride, padding='SAME', bias = False, scope="conv", activation = None):
+    with tf.variable_scope(scope):
+        network = tf.layers.conv2d(inputs=x, 
                                    filters=filter, 
                                    kernel_size=kernel, 
                                    strides=stride, 
-                                   padding=padding)
+                                   padding=padding,
+                                   use_bias = bias,
+                                   kernel_initializer=tf.random_normal_initializer(stddev=.01),
+                                   activation = activation)
         return network
 
 def batch_normalization(x, training, scope):
@@ -28,9 +31,9 @@ def batch_normalization(x, training, scope):
 def relu(x):
     return tf.nn.relu(x)
 
-def linear(x, n_actions, scope) :
-    with tf.name_scope(scope):
-        return fully_connected(x, n_actions, activation_fn = None, scope=scope)
+def linear(x, units, scope, bias=False, activation = tf.nn.relu) :
+    with tf.variable_scope(scope):
+        return tf.layers.dense(x, units, activation = activation, use_bias = bias, kernel_initializer=tf.random_normal_initializer(stddev=.01))
 
 
 def create_residual(n_resid_blocks):
@@ -48,22 +51,20 @@ def Basic(n_conv_layers, input_x, training, n_actions, scope, reuse=False, trans
             else:
                 x = input_x
             
-        with tf.variable_scope('conv_layers'):
-            for i in np.arange(n_conv_layers):
-                x = conv_layer(x, filter=64, kernel=[3, 3], stride=1, scope='conv_%s'% i)
-                x = relu(x)
+        with tf.variable_scope('conv_layer1'):
+            conv_layer_1 = conv_layer(x, filter=16, kernel=[5, 5], stride=1, scope='conv_1', bias=True, activation=tf.nn.leaky_relu)
+
+        with tf.variable_scope('conv_layer2'):
+            conv_layer_2 = conv_layer(conv_layer_1, filter=16, kernel=[3, 3], stride=1, scope='conv_2', bias=True, activation=tf.nn.leaky_relu)
 
         with tf.variable_scope('out'):
-            x = conv_layer(x, filter=1, kernel=[1, 1], stride=1, scope='out'+'_conv1')
-            x = relu(x)
+            # feature_reduction = conv_layer(conv_layer_2, filter=1, kernel=[1, 1], stride=1, scope='out'+'_conv1', activation=tf.nn.relu)
+            reshaped = tf.reshape(conv_layer_2, [-1, int(np.prod(conv_layer_2.shape[1:]))])
 
-            x = tf.reshape(x, [-1, int(np.prod(x.shape[1:]))])
+            pre = linear(reshaped, 64, bias=True, scope='out_linear1', activation=tf.nn.leaky_relu)
+            out = linear(pre, n_actions, bias=True, scope='final', activation = None)
 
-            x = linear(x, 256, scope='out_linear1')
-            x = relu(x)
-            x = linear(x, n_actions, scope='out')
-
-        return x
+        return conv_layer_1, conv_layer_2, reshaped, pre, out
 
 
 def Residual(n_resid_blocks, input_x, training, n_actions, scope, reuse=False):

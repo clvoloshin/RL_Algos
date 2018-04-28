@@ -16,14 +16,12 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 5, screen_height=5, viewer=None, n_actors = 1):
+    def __init__(self, screen_width = 10, screen_height=10, viewer=None, n_actors = 1):
         self.viewer = viewer
         self.n_actors = n_actors #1 = Classic. >1 is multiplayer
         
         self.screen_width = screen_width +2 # +2 for boundary
         self.screen_height = screen_height +2 # +2 for boundary
-        self.min_amount_of_food = np.random.randint(1,5) #...idk what this is supposed to really be
-        self.start_number_of_food = np.random.randint(self.min_amount_of_food,self.min_amount_of_food*3)
         self.growth = 1
 
         #left and right border
@@ -45,8 +43,6 @@ class SnakeEnv(gym.Env):
         self.world = SnakeWorld(self.screen_width,
                                 self.screen_height,
                                 self.n_actors, 
-                                self.min_amount_of_food, 
-                                self.start_number_of_food,
                                 self.growth,
                                 self.boundary)
 

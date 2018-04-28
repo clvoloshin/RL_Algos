@@ -6,10 +6,10 @@ from gym.envs.classic_control import rendering
 import curses
 
 actions = {
-    'w':    'up',
-    's':  'down',
-    'a':  'left',
-    'd': 'right',
+    'w':    '0',
+    's':  '1',
+    'a':  '2',
+    'd': '3',
     }
 
 reverse_action_space = {}
@@ -77,39 +77,39 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 
 scaler = 10
 viewer = rendering.SimpleImageViewer()
-env = snake_env.SnakeEnv(screen_width = 100/scaler, screen_height = 100/scaler, number_of_snakes=2)
-env.reset()
-
-rgb = env.render('rgb_array') 
-upscaled=repeat_upsample(rgb,scaler,scaler)
-viewer.imshow(upscaled)
+env = snake_env.SnakeEnv(screen_width = 40/scaler, screen_height = 40/scaler)
 
 key = curses.KEY_RIGHT
-
-for i in range(10000):
+for j in range(10):
+    env.reset()
+    rgb = env.render('rgb_array') 
+    upscaled=repeat_upsample(rgb,scaler,scaler)
+    viewer.imshow(upscaled)
+    time.sleep(.00000001)
     
-    if len(env.idxs_of_alive_snakes):
+    for i in range(10000):
         
-        
-        # key = read_single_keypress()
-        states_n, rewards_n, done_n = env.step([reverse_action_space[str(snake.heading[0])][str(snake.heading[1])] for snake in np.array(env.snakes)[env.idxs_of_alive_snakes]])
+        if len(env.world.idxs_of_alive_snakes):
+            
+            
+            key = read_single_keypress()
+            # states_n, rewards_n, done_n = env.step([reverse_action_space[str(snake.heading[0])][str(snake.heading[1])] for snake in np.array(env.snakes)[env.idxs_of_alive_snakes]])
 
-        print rewards_n, done_n
-        # if env.snakes[0].alive and env.snakes[1].alive:
-        #     key = read_single_keypress()
-        #     env.step([actions[key]] + ['up'])
-        # elif env.snakes[0].alive:
-        #     key = read_single_keypress()
-        #     env.step([actions[key]])
-        # else:
-        #     env.step(['up'])
+            # print rewards_n, done_n
+            # if env.sn akes[0].alive and env.snakes[1].alive:
+            #     key = read_single_keypress()
+            #     env.step([actions[key]] + ['up'])
+            # elif env.snakes[0].alive:
+            #     key = read_single_keypress()
+            #     env.step([actions[key]])
+            # else:
+            #     env.step(['up'])
 
-        # env.step([actions[key]])
-        rgb = env.render('rgb_array') 
-        upscaled=repeat_upsample(rgb,scaler,scaler)
-        viewer.imshow(upscaled)
-        time.sleep(.00000001)
-    else:
-        pdb.set_trace()
+            states_n, rewards_n, done_n = env.step([actions[key]])
+            print rewards_n, done_n 
+            rgb = env.render('rgb_array') 
+            upscaled=repeat_upsample(rgb,scaler,scaler)
+            viewer.imshow(upscaled)
+            time.sleep(.00000001)
 
 

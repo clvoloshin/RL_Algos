@@ -75,8 +75,8 @@ class DQN(object):
             self.training = tf.placeholder(tf.bool, name='training_flag')
             self.learning_rate = tf.placeholder(tf.float32, None , name='learning_rate') 
 
-            self.net = self.model(self.state, self.training, self.n_actions, scope='net')
-            self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
+            self.c1, self.c2, self.d1, self.d2, self.net = self.model(self.state, self.training, self.n_actions, scope='net')
+            _,_,_,_,self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
 
             self.net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/net')
             self.target_net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/target_net')
@@ -91,7 +91,7 @@ class DQN(object):
             
 
             if self.ddqn:
-                self.net_ = self.model(self.next_state, self.training, self.n_actions, scope='net', reuse=True)
+                _,_,_,_,self.net_ = self.model(self.next_state, self.training, self.n_actions, scope='net', reuse=True)
                 self.next_best_action = tf.argmax(self.net_, 1)
                 self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.next_best_action, self.n_actions), 1)
             else:
@@ -103,18 +103,18 @@ class DQN(object):
 
             
             self.l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in self.net_variables]) * self.weight_decay
-            self.loss = self.loss_func(self.error) #+ self.l2_loss
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
+            self.loss = tf.reduce_sum(self.loss_func(self.error)) #+ self.l2_loss
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate) #MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
             self.extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # Updates batch norm layer, if exists
 
             if self.clip_grad is not None:
-                gradients = self.optimizer.compute_gradients(self.loss, self.net_variables)
-                for i, (grad, var) in enumerate(gradients):
+                self.gradients = self.optimizer.compute_gradients(self.loss, self.net_variables)
+                for i, (grad, var) in enumerate(self.gradients):
                     if grad is not None:
-                        gradients[i] = (tf.clip_by_norm(grad, self.clip_grad), var)
+                        self.gradients[i] = (tf.clip_by_norm(grad, self.clip_grad), var)
                 with tf.control_dependencies(self.extra_update_ops):
-                    self.train = self.optimizer.apply_gradients(gradients)
+                    self.train = self.optimizer.apply_gradients(self.gradients)
             else:
                 with tf.control_dependencies(self.extra_update_ops):
                     self.train = self.optimizer.minimize(self.loss, var_list = self.net_variables)
@@ -167,7 +167,7 @@ class DQN(object):
         
         #self.summary_writer.flush() # Dont flush here; flush in training loop
 
-        if (self.epoch % self.update_freq == 0):
+        if (self.epoch > 0) and (self.epoch % self.update_freq == 0):
             self.sess.run(self.set_new_network)
             
         self.epoch += 1
