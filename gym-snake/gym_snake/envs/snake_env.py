@@ -16,7 +16,7 @@ class SnakeEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, screen_width = 10, screen_height=10, viewer=None, n_actors = 1):
+    def __init__(self, screen_width = 6, screen_height=6, viewer=None, n_actors = 1):
         self.viewer = viewer
         self.n_actors = n_actors #1 = Classic. >1 is multiplayer
         
@@ -66,8 +66,11 @@ class SnakeEnv(gym.Env):
 
             for idx in self.world.idxs_of_alive_snakes:
                 snake = self.world.snakes[idx]
-                for pixel in snake.body:
-                    self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
+                for x, pixel in enumerate(snake.body):
+                    if x:
+                        self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]))
+                    else:
+                        self.viewer.draw_point(pixel, color = (snake.color[0], snake.color[1], snake.color[2]/2)) # Head should be slightly different in color
 
             for food in self.world.food:
                 for pixel in food.location:
@@ -84,10 +87,13 @@ class SnakeEnv(gym.Env):
 
             for idx in self.world.idxs_of_alive_snakes:
                 snake = self.world.snakes[idx]
-                for pixel in snake.body:
-                    rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = snake.color # Assume (0,0) at bottom left for printing. 
+                for x, pixel in enumerate(snake.body):
+                    if x:
+                        rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = snake.color # Assume (0,0) at bottom left for printing. 
                                                                                            # Artifact from the way the gifs are created later
                                                                                            # Has to be done for the gif to match up with the actual array of the board
+                    else:
+                        rgb_array[self.screen_height - pixel[1] -1, pixel[0] ,:] = snake.color/2 # Head should be slightly different in color
             for food in self.world.food:
                 for pixel in food.location:
                     rgb_array[self.screen_height - pixel[1] -1, pixel[0],:] = food.color

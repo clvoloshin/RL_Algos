@@ -95,7 +95,7 @@ def run(**kwargs):
                      batch_size=batch_size,
                      gamma=.99,
                      update_freq=update_freq,
-                     ddqn=False, # double dqn
+                     ddqn=True, # double dqn
                      buffer_size = buffer_size,
                      clip_grad = None,
                      batches_per_epoch = batches_per_epoch,
@@ -103,8 +103,8 @@ def run(**kwargs):
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations/5, 1.0, 0.01)
-        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(1000,5e-4),(10000,1e-4)], outside_value=1e-4)
+        epsilon_schedule = LinearSchedule(iterations*9/10, 1.0, 0.01)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -272,6 +272,7 @@ def run(**kwargs):
                 if count < (len(summary_writers) - 1):
                     summary = tf.Summary()
                     summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
+                    summary.value.add(tag='Steps Taken', simple_value=(steps))
                     writer.add_summary(summary, iteration)
                 writer.flush()
                     
