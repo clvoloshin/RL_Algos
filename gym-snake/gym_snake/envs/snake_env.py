@@ -36,6 +36,7 @@ class SnakeEnv(gym.Env):
         rows += [0]*2 + [self.screen_width-1]*2
         cols += [0] + [self.screen_height-1] + [0] + [self.screen_height-1]
 
+        # represents the -1 boundary around the snake grid
         self.bound_rows, self.bound_cols = rows,cols
         self.boundary = sparse.coo_matrix(([-1]*len(self.bound_rows), (self.bound_rows,self.bound_cols)),  shape = (self.screen_width, self.screen_height)).tocsr()
 
@@ -47,15 +48,63 @@ class SnakeEnv(gym.Env):
                                 self.boundary)
 
     def step(self, action_n):
-        
+        '''
+        Get the state, reward, dones from the world
+
+        Param
+            action_n: list
+                List of actions that each snake does, action_n[i] = ith snake's action
+
+        Return
+            self.state: list 
+                Represents new state of SnakeWorld
+
+            self.rewards_n: list
+                Reward for each snake
+
+            self.done_n: list
+                Whether the snake is dead
+        '''
         return self.world.step(action_n) 
 
     def reset(self):
+        '''
+        Resets the snake world.
 
+        Return
+            self.state: list 
+                Represents new state of SnakeWorld
+        '''
         return self.world.reset()               
     
     def render(self, mode='human', close=False, headless= False):
+        '''
+        Renders the snake world
         
+        Param
+            mode: str
+                if 'rgb_array', return will be viewer and array 
+
+            close: bool
+                ? TODO
+
+            headless: bool
+                Changes return type from viewer+array to just array
+                Allows you to run this function even on display-less server. 
+                (Yes, this can be done many ways. I found this way to be very easy and intuitive) 
+
+        Return
+            rgb_array: numpy array
+                Represents gridworld in RGB [0-1., 0-1., 0-1.]
+
+            and possibly:
+
+            viewer: Viewer
+                see gym.envs.classic_control.rendering
+            
+
+
+        '''
         if not headless:
             if self.viewer == None:
                 from gym.envs.classic_control import rendering
@@ -102,8 +151,3 @@ class SnakeEnv(gym.Env):
                     rgb_array[self.screen_height - pixel[1] -1, pixel[0],:] = [1,0,0]
 
             return rgb_array
-
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]

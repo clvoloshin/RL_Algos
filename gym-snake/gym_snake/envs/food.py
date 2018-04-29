@@ -2,6 +2,9 @@ import numpy as np
 import scipy.sparse as sparse
 
 class Food(object):
+    '''
+    Basic object representing food
+    '''
     def __init__(self, 
                  start_x = 50, 
                  start_y = 50, 

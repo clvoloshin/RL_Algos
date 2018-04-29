@@ -5,6 +5,12 @@ import numpy as np
 from gym.envs.classic_control import rendering
 import curses
 
+'''
+THIS IS A HACKY SCRIPT TO PLAY SNAKE BY HAND.
+'''
+
+
+
 actions = {
     'w':    '0',
     's':  '1',
@@ -93,17 +99,6 @@ for j in range(10):
             
             
             key = read_single_keypress()
-            # states_n, rewards_n, done_n = env.step([reverse_action_space[str(snake.heading[0])][str(snake.heading[1])] for snake in np.array(env.snakes)[env.idxs_of_alive_snakes]])
-
-            # print rewards_n, done_n
-            # if env.sn akes[0].alive and env.snakes[1].alive:
-            #     key = read_single_keypress()
-            #     env.step([actions[key]] + ['up'])
-            # elif env.snakes[0].alive:
-            #     key = read_single_keypress()
-            #     env.step([actions[key]])
-            # else:
-            #     env.step(['up'])
 
             states_n, rewards_n, done_n = env.step([actions[key]])
             print rewards_n, done_n 

@@ -6,7 +6,25 @@ import pdb
 
 def get_implied_board(snake, screen_width, screen_height, fill = 1):
         '''
-        Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its grayscale color
+        Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its fill color
+
+        Param
+            snake: object
+                Instance of Snake class
+
+            screen_width: int
+                width of gridworld
+
+            screen_height: int
+                height of gridworld
+
+            fill: float
+                This number is placed at every location of the snake's body in the gridworld
+
+        Return:
+            csr matrix (sparse)
+                This matrix represents the gridworld
+
         '''        
         pixels = np.array(snake.body)
         try:
@@ -23,8 +41,26 @@ def get_implied_board(snake, screen_width, screen_height, fill = 1):
 
 def get_food_board(all_food, screen_width, screen_height, fill = 1):
     '''
-    Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its grayscale color
-    '''        
+        Given a snake, generate the sparse matrix which represents the board and has the snake filled in with its fill color
+
+        Param
+            all_food: list of list
+                each list in the list is an (x,y) coord representing a food location
+
+            screen_width: int
+                width of gridworld
+
+            screen_height: int
+                height of gridworld
+
+            fill: float
+                This number is placed at every location of the snake's body in the gridworld
+
+        Return:
+            csr matrix (sparse)
+                This matrix represents the gridworld
+
+        '''        
     pixels = np.array(all_food)
     try:
         rows = pixels[:,0]
@@ -38,15 +74,55 @@ def get_food_board(all_food, screen_width, screen_height, fill = 1):
     return sparse_matrix.tocsr()
 
 def check_if_snake_hit_boundary(snake, num_rows, num_cols):
+    '''
+    Kills snake if it hit the edge of the gridworld
+
+        Param
+            num_rows: int
+                width of gridworld
+
+            num_cols: int
+                height of gridworld
+    '''
     snake.alive = snake.alive and (snake.body[0][0] > 0) and (snake.body[0][0] < (num_rows-1)) and (snake.body[0][1] > 0) and (snake.body[0][1] < (num_cols-1))
 
 def check_if_snake_self_intersected(snake):
+    '''
+    Kills snake if it hit itself
+
+        Param
+            snake: object
+                Instance of Snake class
+    '''
     snake.alive = snake.alive and not (snake.body[0] in snake.body[1:])
 
 def check_if_snake_hit_other_snake(snake, other_snake):
+    '''
+    Kills snake if it hit a different snake
+
+        Param
+            snake: object
+                Instance of Snake class
+
+            other_snake: object
+                Instance of Snake class
+    '''
     snake.alive = False if (snake.body[0] in other_snake.body) else snake.alive
 
 def check_which_snakes_are_still_alive(snakes, num_rows, num_cols):
+    '''
+    Kills all snakes which have reached a terminal condition
+
+        Param
+            snake: list
+                list contains snake objects
+
+            num_rows: int
+                width of gridworld
+
+            num_cols: int
+                height of gridworld
+    '''
     for i,snake in enumerate(snakes):
         if snake.alive:
             for j, other_snake in enumerate(snakes):
@@ -58,6 +134,23 @@ def check_which_snakes_are_still_alive(snakes, num_rows, num_cols):
                         check_if_snake_hit_boundary(snake, num_rows, num_cols)
 
 def get_boards(snakes, num_rows, num_cols):
+    '''
+    Get sparse grid for each snake
+
+        Param
+            snakes: list
+                list contains snake objects
+
+            num_rows: int
+                width of gridworld
+
+            num_cols: int
+                height of gridworld
+
+        Return
+            boards: list
+                list of sparse grids
+    '''
     boards = []
     for snake in snakes:
         boards.append(get_implied_board(snake, num_rows, num_cols))
@@ -66,31 +159,61 @@ def get_boards(snakes, num_rows, num_cols):
 
 
 def get_state(snakes, all_food, num_rows, num_cols, growth):
+    '''
+    Runs through logic
+
+        Param
+            snakes: list
+                list contains snake objects
+
+            all_food: list
+                list contains food objects
+
+            num_rows: int
+                width of gridworld
+
+            num_cols: int
+                height of gridworld
+
+            growth: int
+                set new growth of food if new food is required to be made
+
+        Return
+            state: list
+                A concatenation of the following lists: (1) sparse grids of full snake
+                                                        (2) sparse grid of snake heads
+                                                        (3) sparse grid of food
+
+            idxs_of_alive_snakes: list
+                list of ints representing which snakes are alive
+
+    '''
+
+
     snakes = np.array(snakes)
 
-    # gets previously alive snakes' boards
-    
-    boards = np.array(get_boards(snakes, num_rows, num_cols)) # kills snakes that exit board
+    # get snake boards
+    boards = np.array(get_boards(snakes, num_rows, num_cols))
 
-    # check if snake is valid
-    
-    check_which_snakes_are_still_alive(snakes, num_rows, num_cols) # kills snakes which hit other snakes or themselves
+    # check which snakes are valid
+    check_which_snakes_are_still_alive(snakes, num_rows, num_cols) # kills snakes which hit other snakes, themselves, or boundary
 
     
-    idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive]
-    boards[np.array([not x.alive for x in snakes])] = sparse.csr_matrix((num_rows, num_cols)) # set dead snakes as dead
+    idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive] # enumerate alive snakes
+    boards[np.array([not x.alive for x in snakes])] = sparse.csr_matrix((num_rows, num_cols)) # set dead snakes' boards as all zero
 
     
+    # Get food sparse matrix
+    # This is the quickest way to do it bc splicing sparse matrix is slow but coo to csr is fast
     all_locations = []
     for food in all_food:
         all_locations.append([food.location[0][0],food.location[0][1]])
     food_board = get_food_board(all_locations,num_rows,num_cols) 
 
-    
+    # Add more food if necessary
     total_board = sum(boards) + food_board
 
-    # Add more food if necessary
-    food_to_add = len(idxs_of_alive_snakes) - len(all_food) # MAke only as much food as alive snakes
+    food_to_add = len(idxs_of_alive_snakes) - len(all_food) # Make only as much food as alive snakes
     
     # Handle infinite loop that happens at the end of game
     while (total_board.nnz <= ((total_board.shape[0]-2)*(total_board.shape[0]-2))-1) and (food_to_add > 0):
@@ -114,60 +237,6 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
             heads.append(sparse.csr_matrix((num_rows, num_cols)))
 
 
-    return boards.tolist() + heads + [food_board], idxs_of_alive_snakes
-    # else:
-    #     return [], []
+    state = boards.tolist() + heads + [food_board]
+    return state, idxs_of_alive_snakes
 
-# def get_boards_old(snakes, num_rows, num_cols):
-#     '''
-#     Deprecated
-#     '''
-#     boards = []
-#     for snake in snakes:
-#         if snake.alive:
-#             board = get_implied_board(snake, num_rows, num_cols)
-#             if board.nnz > 0:
-#                 boards.append(board)
-#     return boards
-
-# def get_state_old(snakes, all_food, num_rows, num_cols, min_amount_of_food, growth, use_grayscale):
-#     '''
-#     DEPRECATED
-#     '''
-#     snakes = np.array(snakes)
-
-#     # gets previously alive snakes' boards
-#     boards = get_boards(snakes, num_rows, num_cols)    
-
-#     # checks if snakes are still currently alive
-#     idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive]
-#     check_which_snakes_are_still_alive(snakes[idxs_of_alive_snakes], boards)
-    
-
-#     idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive]
-
-#     if len(idxs_of_alive_snakes) > 0:
-#         boards = []
-#         for idx in idxs_of_alive_snakes:
-#             boards.append(get_implied_board(snakes[idx], num_rows, num_cols, fill = snakes[idx].to_grayscale() if use_grayscale else 1)) 
-
-#         total_board = sum(boards)
-
-#         for food in all_food:
-#             total_board[food.location[0][0],food.location[0][1]] = .5 if use_grayscale else 1
-
-#         # Add more food if necessary
-#         food_to_add = min_amount_of_food - len(all_food)
-#         while food_to_add > 0:
-#             start_x_loc = np.random.randint(0, num_rows, size = 1)
-#             start_y_loc = np.random.randint(0, num_cols, size = 1)
-#             if total_board[start_x_loc, start_y_loc] == 0:
-#                 total_board[start_x_loc, start_y_loc] = .5 if use_grayscale else 1
-#                 all_food += [Food(start_x = start_x_loc,
-#                                    start_y = start_y_loc,
-#                                    growth = growth)]
-#                 food_to_add -= 1
-
-#         return total_board, idxs_of_alive_snakes
-#     else:
-#         return 0,[] # gameover

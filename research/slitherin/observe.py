@@ -46,8 +46,8 @@ def run(**kwargs):
     ################################################################
     # SEEDS
     ################################################################
-    tf.set_random_seed(seed)
-    np.random.seed(seed)
+    tf.set_random_seed(seed*20)
+    np.random.seed(seed*20)
 
     
     ################################################################
@@ -89,11 +89,12 @@ def run(**kwargs):
         ## Load model from where you left off
         ## Does not play nice w/ plots in tensorboard at the moment
         ## TODO: FIX
+        saver = tf.train.Saver(max_to_keep=2)
+
         if True:
             try:
                 print ('Loading Model...')
-                ckpt = tf.train.get_checkpoint_state(logdir)
-                pdb.set_trace()
+                ckpt = tf.train.get_checkpoint_state(os.path.join(os.getcwd(),logdir))
                 saver.restore(sess,ckpt.model_checkpoint_path)
                 iteration_offset = int(ckpt.model_checkpoint_path.split('-')[-1].split('.')[0])
             except:
@@ -107,7 +108,6 @@ def run(**kwargs):
 
             iteration_offset = 0
 
-        pdb.set_trace()
         ################################################################
         # Fill Buffer
         ################################################################
@@ -115,7 +115,9 @@ def run(**kwargs):
         tic = time.time()
         total_timesteps = 0
 
-        for iteration in range(1):
+
+
+        for iteration in range(5):
             _ = env.reset()
             obs = env.render('rgb_array', headless = headless).astype(float)
             obs /= obs.max()
@@ -123,6 +125,7 @@ def run(**kwargs):
 
             done_n = np.array([False]*env.n_actors)
             steps = 0
+            viewer = None
             while not done_n.all():
 
                 if True:
@@ -142,7 +145,7 @@ def run(**kwargs):
                     monitor.add(rgb, iteration, iteration)
 
                 last_obs = obs
-                acts = network.greedy_select([[last_obs]], 1.) 
+                acts = network.greedy_select([[last_obs]], 0) 
                 acts = [str(x) for x in acts]
       
                 # Next step
@@ -152,9 +155,11 @@ def run(**kwargs):
                 obs = rgb2gray(obs)
 
                 steps += 1
+                if steps > 300:
+                    break
 
             monitor.make_gifs(iteration)
-            
+            pdb.set_trace()
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()
             # ep_lengths = history.get_timesteps()
