@@ -75,8 +75,8 @@ class DQN(object):
             self.training = tf.placeholder(tf.bool, name='training_flag')
             self.learning_rate = tf.placeholder(tf.float32, None , name='learning_rate') 
 
-            self.c1, self.c2, self.d1, self.d2, self.net = self.model(self.state, self.training, self.n_actions, scope='net')
-            _,_,_,_,self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
+            self.net = self.model(self.state, self.training, self.n_actions, scope='net')
+            self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
 
             self.net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/net')
             self.target_net_variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + '/target_net')
@@ -91,7 +91,7 @@ class DQN(object):
             
 
             if self.ddqn:
-                _,_,_,_,self.net_ = self.model(self.next_state, self.training, self.n_actions, scope='net', reuse=True)
+                self.net_ = self.model(self.next_state, self.training, self.n_actions, scope='net', reuse=True)
                 self.next_best_action = tf.argmax(self.net_, 1)
                 self.next_Q = tf.reduce_sum(self.target_net * tf.one_hot(self.next_best_action, self.n_actions), 1)
             else:

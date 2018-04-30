@@ -64,7 +64,7 @@ def Basic(n_conv_layers, input_x, training, n_actions, scope, reuse=False, trans
             pre = linear(reshaped, 64, bias=True, scope='out_linear1', activation=tf.nn.leaky_relu)
             out = linear(pre, n_actions, bias=True, scope='final', activation = None)
 
-        return conv_layer_1, conv_layer_2, reshaped, pre, out
+        return out
 
 
 def Residual(n_resid_blocks, input_x, training, n_actions, scope, reuse=False):

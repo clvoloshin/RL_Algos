@@ -83,7 +83,7 @@ class SnakeEnv(gym.Env):
         
         Param
             mode: str
-                if 'rgb_array', return will be viewer and array 
+                if 'rgb_array', return will be viewer and array; unless headless is set 
 
             close: bool
                 ? TODO
