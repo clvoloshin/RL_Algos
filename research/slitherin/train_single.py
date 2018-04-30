@@ -249,7 +249,7 @@ def run(**kwargs):
                 if network.buffer.games_played >= 1:
                     break
 
-            for _ in range(5):
+            for _ in range(min(steps/4, 5)): # learn every 4 frames, up to a total of 5 times.
                 network.train_step(learning_rate_schedule)
             monitor.make_gifs(iteration)
             
