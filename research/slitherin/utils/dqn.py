@@ -206,7 +206,6 @@ class DQN(object):
         if (self.epoch > 0) and (self.epoch % self.update_freq == 0):
             self.sess.run(self.set_new_network)
         
-        pdb.set_trace()
         self.epoch += 1
 
 
