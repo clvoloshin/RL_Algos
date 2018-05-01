@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import pdb
-from history import History
+from history import History, PrioritizedHistory
 
 def huber_loss(x, delta=1.0):
     """Reference: https://en.wikipedia.org/wiki/Huber_loss"""
@@ -25,7 +25,10 @@ class DQN(object):
                  buffer_size = 10000,
                  clip_grad = None,
                  batches_per_epoch = 1,
-                 is_sparse = True
+                 is_sparse = True,
+                 use_priority = False,
+                 priority_alpha = .5,
+                 priority_eps = 1e-8
                  ):
 
         self.sess = sess
@@ -43,7 +46,10 @@ class DQN(object):
         self.momentum = .9
         self.weight_decay = .9
 
-        self.buffer = History(self.buffer_size)
+        if use_priority:
+            self.buffer = PrioritizedHistory(self.buffer_size, priority_alpha, priority_eps)
+        else:
+            self.buffer = History(self.buffer_size)
 
         self.epoch = 0
         self.batches_per_epoch = batches_per_epoch
@@ -74,6 +80,7 @@ class DQN(object):
             self.reward = tf.placeholder(tf.float32, [None] , name='reward')
             self.training = tf.placeholder(tf.bool, name='training_flag')
             self.learning_rate = tf.placeholder(tf.float32, None , name='learning_rate') 
+            self.weights = tf.placeholder(tf.float32, [None], name="weight") # for prioritized experience replay
 
             self.net = self.model(self.state, self.training, self.n_actions, scope='net')
             self.target_net = self.model(self.next_state, self.training, self.n_actions, scope='target_net')
@@ -100,10 +107,17 @@ class DQN(object):
 
             self.bellman = self.reward + self.gamma * self.next_Q * (1.0 - self.done)
             self.error = self.Q - tf.stop_gradient(self.bellman)
+            
 
             
             self.l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in self.net_variables]) * self.weight_decay
-            self.loss = tf.reduce_sum(self.loss_func(self.error)) #+ self.l2_loss
+            loss = tf.reduce_sum(self.loss_func(self.error)) #+ self.l2_loss
+
+            if isinstance(self.buffer, PrioritizedHistory):
+                self.loss = tf.reduce_mean(self.weights * loss)
+            else:
+                self.loss = loss
+            
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate) #MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
             self.extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # Updates batch norm layer, if exists
@@ -141,18 +155,37 @@ class DQN(object):
 
         return [action]
 
-    def train_step(self, learning_rate_schedule):
+    def train_step(self, learning_rate_schedule, beta_schedule=None):
         # Copy the QNetwork weights to the Target QNetwork.
         if self.epoch == 0:
             self.sess.run(self.set_new_network)
 
         for batch_num in np.arange(self.batches_per_epoch):
             # Sample experience from replay memory
-            obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma, is_sparse=self.is_sparse)
+            if isinstance(self.buffer, PrioritizedHistory): 
+                obs, act, rew, new_obs, done, weights, idxs  = self.buffer.sample(self.batch_size, is_sparse=self.is_sparse, beta=beta_schedule.value(self.epoch))
+            else:
+                obs, act, rew, new_obs, done  = self.buffer.sample(self.batch_size, self.gamma, is_sparse=self.is_sparse)
 
             # Perform training
             #_,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
-            loss,_ = self.sess.run([self.loss, self.train],
+            if isinstance(self.buffer, PrioritizedHistory): 
+                td_errors, loss,_ = self.sess.run([self.error, self.loss, self.train],
+                                  { self.state: obs,
+                                    self.next_state: new_obs,
+                                    self.action: act,
+                                    self.done: done,
+                                    self.reward: rew,
+                                    self.training: True,
+                                    self.learning_rate: learning_rate_schedule.value(self.epoch),
+                                    self.weights: weights} )
+
+            
+                new_priorities = np.abs(td_errors) + self.buffer.priority_eps
+                self.buffer.update_priorities(idxs, new_priorities)
+
+            else:
+                loss,_ = self.sess.run([self.loss, self.train],
                                   { self.state: obs,
                                     self.next_state: new_obs,
                                     self.action: act,
@@ -161,7 +194,10 @@ class DQN(object):
                                     self.training: True,
                                     self.learning_rate: learning_rate_schedule.value(self.epoch)} )
 
-        to_write = self.sess.run(self.summarize, { self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )
+        if isinstance(self.buffer, PrioritizedHistory): 
+            to_write = self.sess.run(self.summarize, { self.weights: weights, self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )
+        else:
+            to_write = self.sess.run(self.summarize, { self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )        
         
         self.summary_writer.add_summary(to_write, self.epoch)
         
@@ -169,7 +205,8 @@ class DQN(object):
 
         if (self.epoch > 0) and (self.epoch % self.update_freq == 0):
             self.sess.run(self.set_new_network)
-            
+        
+        pdb.set_trace()
         self.epoch += 1
 
 

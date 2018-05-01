@@ -51,6 +51,8 @@ def run(**kwargs):
     headless=kwargs['headless']
     update_freq=kwargs['update_freq']
     buffer_size=kwargs['buffer_size']
+    use_priority=kwargs['use_priority']
+
 
     if headless:
         import matplotlib
@@ -99,11 +101,14 @@ def run(**kwargs):
                      buffer_size = buffer_size,
                      clip_grad = None,
                      batches_per_epoch = batches_per_epoch,
-                     is_sparse = True
+                     is_sparse = True,
+                     use_priority=use_priority
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
         epsilon_schedule = LinearSchedule(iterations*95/10, 1.0, 0.01)
+        if use_priority:
+            beta_schedule = LinearSchedule(iterations*5, 0.4, 1.)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -249,8 +254,11 @@ def run(**kwargs):
                 if network.buffer.games_played >= 1:
                     break
 
-            for _ in range(min(steps/4, 5)): # learn every 4 frames, up to a total of 5 times.
-                network.train_step(learning_rate_schedule)
+            for _ in range(min(max(1,steps/4), 5)): # learn every 4 frames, up to a total of 5 times.
+                if use_priority:
+                    network.train_step(learning_rate_schedule, beta_schedule)
+                else:
+                    network.train_step(learning_rate_schedule)
             monitor.make_gifs(iteration)
             
             
@@ -286,6 +294,7 @@ def main():
     parser.add_argument('--buffer_size', '-bs', type=int, default=10000)
     parser.add_argument('--update_freq', '-uf', type=int, default=10000)
     parser.add_argument('--headless', '-hless', action='store_true')
+    parser.add_argument('--use_priority', '-priority', action='store_true')
     args = parser.parse_args()
 
     if not(os.path.exists('output')):
@@ -318,7 +327,8 @@ def main():
         batches_per_epoch=args.batches_per_epoch,
         headless=args.headless,
         update_freq=args.update_freq,
-        buffer_size=args.buffer_size)
+        buffer_size=args.buffer_size,
+        use_priority=args.use_priority)
 
 if __name__ == "__main__":
     main()
