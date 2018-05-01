@@ -254,7 +254,8 @@ def run(**kwargs):
                 if network.buffer.games_played >= 1:
                     break
 
-            for _ in range(min(max(1,steps/4), 5)): # learn every 4 frames, up to a total of 5 times.
+            # max: to cover all new steps added to buffer, min: to not overdo too much
+            for _ in range(min(max(maximum_number_of_steps/batch_size + 1,steps/4), 12)): # learn every 4 frames, up to a total of 5 times.
                 if use_priority:
                     network.train_step(learning_rate_schedule, beta_schedule)
                 else:
