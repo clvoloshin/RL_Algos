@@ -28,8 +28,8 @@ def get_implied_board(snake, screen_width, screen_height, fill = 1):
         '''        
         pixels = np.array(snake.body)
         try:
-            rows = pixels[:,0]
-            cols = pixels[:,1]
+            rows = pixels[:,0].reshape(-1)
+            cols = pixels[:,1].reshape(-1)
             fill = fill + 10**-12 if fill == .5 else fill
             sparse_matrix = sparse.coo_matrix(([fill]*snake.length, (rows,cols)), 
                                  shape = (screen_width, screen_height)) #.astype(np.uint8)
@@ -63,8 +63,8 @@ def get_food_board(all_food, screen_width, screen_height, fill = 1):
         '''        
     pixels = np.array(all_food)
     try:
-        rows = pixels[:,0]
-        cols = pixels[:,1]
+        rows = pixels[:,0].reshape(-1)
+        cols = pixels[:,1].reshape(-1)
         fill = fill + 10**-12 if fill == .5 else fill
         sparse_matrix = sparse.coo_matrix(([fill]*rows.shape[0], (rows,cols)), 
                              shape = (screen_width, screen_height)) #.astype(np.uint8)
@@ -225,7 +225,7 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
             all_food += [Food(start_x = start_x_loc,
                                start_y = start_y_loc,
                                growth = growth)]
-            food_to_add -= 1
+            food_to_add -= 1        
 
     # get heads
     heads = []
@@ -235,7 +235,6 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
                                  shape = (num_rows, num_cols)).tocsr())
         else:
             heads.append(sparse.csr_matrix((num_rows, num_cols)))
-
 
     state = boards.tolist() + heads + [food_board]
     return state, idxs_of_alive_snakes

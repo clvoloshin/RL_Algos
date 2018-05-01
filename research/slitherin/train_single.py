@@ -191,6 +191,7 @@ def run(**kwargs):
                 network.buffer.games_played += 1
                 if (((network.buffer.games_played) % 10) == 0):
                     print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
+                
                 obs = env.reset()
 
                 animate_episode = (iteration % (update_freq) == 0) and animate

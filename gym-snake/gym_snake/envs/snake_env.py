@@ -128,6 +128,7 @@ class SnakeEnv(gym.Env):
             for pixel in zip(self.bound_rows, self.bound_cols):
                     self.viewer.draw_point(pixel, color = (1,0,0))
 
+            # if this is the second frame in a game, sometimes this does weird things like make new head/food appear. Doesnt affect internal state
             return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
         else:

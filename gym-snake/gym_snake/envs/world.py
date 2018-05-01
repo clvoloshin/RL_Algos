@@ -95,6 +95,7 @@ class SnakeWorld(object):
         # Process next state, checking if snakes are alive
         last_done_n = self.done_n
         self.state, self.idxs_of_alive_snakes = get_state(self.snakes, self.food, self.screen_width, self.screen_height, self.growth)
+
         self.state = [state + self.boundary for state in self.state] # add -1 boundary
 
         # Figure which snakes are dead
