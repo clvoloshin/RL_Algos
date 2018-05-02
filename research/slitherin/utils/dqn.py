@@ -111,12 +111,12 @@ class DQN(object):
 
             
             self.l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in self.net_variables]) * self.weight_decay
-            loss = tf.reduce_sum(self.loss_func(self.error)) #+ self.l2_loss
+            loss = self.loss_func(self.error) #+ self.l2_loss
 
             if isinstance(self.buffer, PrioritizedHistory):
                 self.loss = tf.reduce_mean(self.weights * loss)
             else:
-                self.loss = loss
+                self.loss = tf.reduce_sum(loss) #mean? LR should take care of it
             
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate) #MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
 
