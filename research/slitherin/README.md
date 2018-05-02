@@ -19,14 +19,18 @@ cd /dir/RL_Algos/gym-snake
 pip install -e .
 cd /dir/RL_Algos/research/slitherin
 pip install -e .
-python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3 -hless
-python train_single.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 5 -hless
+python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3  -hless
+python train_single.py --iterations 10000 -seq 200 --animate -gpe 1 -bpe 1 -b 128 -uf 500 -bs 100000 --seed 5 -hless
 ~~~
 *Make sure you you specify the correct directory for /dir/*
 
+## 2 Snake
+
+TBA.
+
 ## 1 Snake
 
-I tried two different representations (preprocessing) for the 1 snake scenario: one that is natural and one less so but arguably more generalizable.
+I tried two different representations (preprocessing) for the 1 snake scenario: one that is natural and one less so but arguably more generalizable. My reinforcement learning algorithm of choice was Double DQN in both.
 
 ### Natural
 *Note: all of the matrices shown are rotated by 90 degrees around the center of the matrix so that they match the images. In reality (in system memory), they are in unrotated form.*
