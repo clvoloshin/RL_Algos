@@ -1,4 +1,4 @@
-# Sliterin'
+# Slitherin'
 OpenAi requests for research.
 
 <!---
@@ -9,6 +9,20 @@ The food is green: (0,255,0)
 
 ![Example of SnakeWorld](./media/example.jpg)
 --->
+
+## Replication
+
+To replicate: Clone the directory and follow the following:
+~~~
+pip install gym
+cd /dir/RL_Algos/gym-snake
+pip install -e .
+cd /dir/RL_Algos/research/slitherin
+pip install -e .
+python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3 -hless
+python train_single.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 5 -hless
+~~~
+*Make sure you you specify the correct director for /dir/*
 
 ## 1 Snake
 
