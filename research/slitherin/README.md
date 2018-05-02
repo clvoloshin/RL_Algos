@@ -1,0 +1,215 @@
+# Sliterin'
+OpenAi requests for research.
+
+<!---
+## Visualization
+The snake is blue: (0,0,255), but its head is slighly darker (0,0,127).
+The barrier is red: (255,0,0)
+The food is green: (0,255,0)
+
+![Example of SnakeWorld](./slitherin/media/example.jpg)
+--->
+
+## 1 Snake
+
+I tried two different representations (preprocessing) for the 1 snake scenario: one that is natural and one less so but arguably more generalizable.
+
+### Natural
+*Note: all of the matrices shown are rotated by 90 degrees around the center of the matrix so that they match the images. In reality (in system memory), they are in unrotated form.*
+
+Taking the SnakeWorld exactly as is, then making it grayscale. In other words, consider the rendering of the SnakeWorld is:
+
+![Example of SnakeWorld](./slitherin/media/example.jpg) 
+
+This state is given by and RGB array of size (3, 8, 8) representing (channes, height, width).
+
+<!---
+|255|255|255|255|255|255|255|255|
+|--|--|--|--|--|--|--|--|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|0 |0 |0 |0 |0 |0 |255|
+|255|255|255|255|255|255|255|255|
+
+|0|0|0|0|0|0|0|0|
+|--|--|--|--|--|--|--|--|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0 |0 |0 |0 |0 |255 |0|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0|0|0|0|0|0|0|
+
+|0|0|0|0|0|0|0|0|
+|--|--|--|--|--|--|--|--|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0 |255 |0 |0 |0 |0 |0|
+|0|0 |255 |0 |0 |0 |0 |0|
+|0|0 |255 |0 |0 |0 |0 |0|
+|0|0 |255 |255 |127 |0 |0 |0|
+|0|0 |0 |0 |0 |0 |0 |0|
+|0|0|0|0|0|0|0|0|
+--->
+
+Then we'd convert this to grayscale via the formula gray(R,G,B) = 0.299*R + 0.587*G + 0.114B, achieving:
+
+|.299|.299|.299|.299|.299|.299|.299|.299|
+|--|--|--|--|--|--|--|--|
+|.299|0 |0 |0 |0 |0 |0 |.299|
+|.299|0 |.114 |0 |0 |0 |0 |.299|
+|.299|0 |.114 |0 |0 |0 |0 |.299|
+|.299|0 |.114 |0 |0 |0 |0 |.299|
+|.299|0 |.114 |.114 |.057 |0 |.587 |.299|
+|.299|0 |0 |0 |0 |0 |0 |.299|
+|.299|.299|.299|.299|.299|.299|.299|.299|
+
+We use the following neural network and hyperparameters
+
+![Natural Structure](./slitherin/media/simple.png) 
+
+|Param																				    	| Number|
+|---------------------------------------------------|-------|
+|Number of games to play (iterations)				        |  10000|
+|Batch Size 																	      |  64   |
+|Update Frequency 																	|  500  |
+|Double DQN? 																			  |  True |
+|Prioritized Experience Replay?     							  |  False|
+|Buffer Size																				|  50000|
+|Gradient Clip																			|  None |
+|Number of minibatches															|  1    |
+|Max epsilon																				|  1.0  |
+|Min epsilon																				|  .01  |
+|Epsilon num_steps																	|  9000 |
+|How many frames to add before starting training		|  25000|
+|Frames between learning steps 											|  4    |
+|Maximum steps snake can take												|  100  |
+
+|Number of steps    																| Learning Rate|
+|---------------------------------------------------|--------------|
+| 0	   																							|	1e-3	       |
+| 20000																							|	5e-3	       |
+| 50000																							|	1e-4	       |
+
+Setting seed=3, we yield the following curves:
+
+![Learning Curve Simple](./slitherin/media/learning_curves_simple.png)
+![Loss Curve Simple](./slitherin/media/loss_curve_simple.png)
+
+Visualizing learning over time:
+
+| Game        | 2500 | 5500  | Post Learning|   
+|-------------|------|-------|--------------|
+| |![Simple Start Game](./slitherin/media/simple_game_2500_epoch_10500.gif)|![Simple Mid Game](./slitherin/media/simple_game_5500_epoch_67590.gif)|![Simple End Game](./slitherin/media/simple_game_end_max_cap_300.gif)|
+| Frames Seen | 672k | 4300k | 10000k		    |
+| Epsilon     | .75  | .42   | 0 			      | 
+| Steps taken | 8    | 100 (max) | 300+ (unbounded)	|
+| Food Eaten  | 0    | 5     | 9   			    |
+
+Notice that after 5500 iterations, the snake does well at avoiding walls, but ends itself in an (seemingly) infinite loop around the food.
+Similarly, after 10000 interations (post learning) the snake has learned that eating some food is good, but eventually finds itself doing infinite loops near the wall.
+This is due to incomplete training; once the snake gets too long it recognizes that it's better to not run into itself than risk getting food and dying.
+However, had the snake seen enough samples, it would have been able to get beyond this quirky behavior.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### More generalizable
+*Note: all of the matrices shown are rotated by 90 degrees around the center of the matrix so that they match the images. In reality (in system memory), they are in unrotated form.*
+
+While before we converted the RGB state of the world to grayscale and used that, here we do something that generalizes beyond color and will (in my hope) work well in describing multi-snake state:
+
+Consider the rendering of the SnakeWorld as:
+
+![Example of SnakeWorld Again](./slitherin/media/example.jpg) 
+
+The state is given by a list of sparse array of shape (8, 8).
+
+**The odd channel(s) is:**  
+  * -1 for boundary
+  * 1 for snake body
+  * 0 otherwise
+
+**The even channel(s) is:**  
+  * -1 for boundary
+  * 1 for snake head
+  * 0 otherwise
+
+**The last channel is:**  
+  * -1 for boundary
+  * 1 for food
+  * 0 otherwise
+  
+In the 1 snake case, the list is then of shape (3,8,8). However in the multi-snake case, it's (number of snakes + 1, 8,8).
+
+I believe this will generalize better to multi-snake scenarios (and beyond) because the network need not learn anything about color/gray and
+multiple snakes can be represented by adding additional channels using the same stucture.
+
+
+We use the following neural network and hyperparameters
+
+![General Structure](./slitherin/media/single.png) 
+
+|Param																				    	| Number|
+|---------------------------------------------------|-------|
+|Number of games to play (iterations)				        |  10000|
+|Batch Size 																	      |  128  |
+|Update Frequency 																	|  500  |
+|Double DQN? 																			  |  True |
+|Prioritized Experience Replay?     							  |  True |
+|Buffer Size																				|  50000|
+|Gradient Clip																			|  None |
+|Number of minibatches															|  1    |
+|Max epsilon																				|  1.0  |
+|Min epsilon																				|  .01  |
+|Epsilon num_steps																	|  9500 |
+|How many frames to add before starting training		|  25000|
+|Frames between learning steps 											|  4    |
+|Maximum steps snake can take												|  200  |
+|Max beta   																				|  1.0  |
+|Min beta	    																			|  .4   |
+|Epsilon num_steps																	| 50000 |
+
+|Number of steps    																| Learning Rate|
+|---------------------------------------------------|--------------|
+| 0	   																							|	1e-3	       |
+| 20000																							|	5e-3	       |
+| 50000																							|	1e-4	       |
+
+Setting seed=5, we yield the following curves:
+
+![Learning Curve Single](./slitherin/media/learning_curves_single.png)
+![Loss Curve Single](./slitherin/media/loss_curve_single.png)
+
+Visualizing learning over time:
+
+| Game        | 2500 | 5500  | Post Learning|   
+|-------------|------|-------|--------------|
+| |![Single Start Game](./slitherin/media/single_game_2500_epoch_11000.gif)|![Single Mid Game](./slitherin/media/single_game_5500_epoch_45090.gif)|![Single End Game](./slitherin/media/single_game_end_max_cap_300.gif)|
+| Frames Seen | 1400k | 5700k | 12300k		    |
+| Epsilon     | .75  | .42   | 0 			      | 
+| Steps taken | 200 (max)    | 62 | 187	|
+| Food Eaten  | 0    | 12     | 35 (all) |
+
+Through prioritized experience replay, we achieved some nice results where the snake is able to win the game, even given the input state structure which I believe to be more general than the "natural" way of using color.
+
+
+
+
