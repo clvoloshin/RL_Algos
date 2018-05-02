@@ -7,7 +7,7 @@ The snake is blue: (0,0,255), but its head is slighly darker (0,0,127).
 The barrier is red: (255,0,0)
 The food is green: (0,255,0)
 
-![Example of SnakeWorld](./slitherin/media/example.jpg)
+![Example of SnakeWorld](./media/example.jpg)
 --->
 
 ## 1 Snake
@@ -19,7 +19,7 @@ I tried two different representations (preprocessing) for the 1 snake scenario: 
 
 Taking the SnakeWorld exactly as is, then making it grayscale. In other words, consider the rendering of the SnakeWorld is:
 
-![Example of SnakeWorld](./slitherin/media/example.jpg) 
+![Example of SnakeWorld](./media/example.jpg) 
 
 This state is given by and RGB array of size (3, 8, 8) representing (channes, height, width).
 
@@ -69,7 +69,7 @@ Then we'd convert this to grayscale via the formula gray(R,G,B) = 0.299*R + 0.58
 
 We use the following neural network and hyperparameters
 
-![Natural Structure](./slitherin/media/simple.png) 
+![Natural Structure](./media/simple.png) 
 
 |Param																				    	| Number|
 |---------------------------------------------------|-------|
@@ -96,14 +96,14 @@ We use the following neural network and hyperparameters
 
 Setting seed=3, we yield the following curves:
 
-![Learning Curve Simple](./slitherin/media/learning_curves_simple.png)
-![Loss Curve Simple](./slitherin/media/loss_curve_simple.png)
+![Learning Curve Simple](./media/learning_curves_simple.png)
+![Loss Curve Simple](./media/loss_curve_simple.png)
 
 Visualizing learning over time:
 
 | Game        | 2500 | 5500  | Post Learning|   
 |-------------|------|-------|--------------|
-| |![Simple Start Game](./slitherin/media/simple_game_2500_epoch_10500.gif)|![Simple Mid Game](./slitherin/media/simple_game_5500_epoch_67590.gif)|![Simple End Game](./slitherin/media/simple_game_end_max_cap_300.gif)|
+| |![Simple Start Game](./media/simple_game_2500_epoch_10500.gif)|![Simple Mid Game](./media/simple_game_5500_epoch_67590.gif)|![Simple End Game](./media/simple_game_end_max_cap_300.gif)|
 | Frames Seen | 672k | 4300k | 10000k		    |
 | Epsilon     | .75  | .42   | 0 			      | 
 | Steps taken | 8    | 100 (max) | 300+ (unbounded)	|
@@ -138,7 +138,7 @@ While before we converted the RGB state of the world to grayscale and used that,
 
 Consider the rendering of the SnakeWorld as:
 
-![Example of SnakeWorld Again](./slitherin/media/example.jpg) 
+![Example of SnakeWorld Again](./media/example.jpg) 
 
 The state is given by a list of sparse array of shape (8, 8).
 
@@ -165,7 +165,7 @@ multiple snakes can be represented by adding additional channels using the same 
 
 We use the following neural network and hyperparameters
 
-![General Structure](./slitherin/media/single.png) 
+![General Structure](./media/single.png) 
 
 |Param																				    	| Number|
 |---------------------------------------------------|-------|
@@ -195,14 +195,14 @@ We use the following neural network and hyperparameters
 
 Setting seed=5, we yield the following curves:
 
-![Learning Curve Single](./slitherin/media/learning_curves_single.png)
-![Loss Curve Single](./slitherin/media/loss_curve_single.png)
+![Learning Curve Single](./media/learning_curves_single.png)
+![Loss Curve Single](./media/loss_curve_single.png)
 
 Visualizing learning over time:
 
 | Game        | 2500 | 5500  | Post Learning|   
 |-------------|------|-------|--------------|
-| |![Single Start Game](./slitherin/media/single_game_2500_epoch_11000.gif)|![Single Mid Game](./slitherin/media/single_game_5500_epoch_45090.gif)|![Single End Game](./slitherin/media/single_game_end_max_cap_300.gif)|
+| |![Single Start Game](./media/single_game_2500_epoch_11000.gif)|![Single Mid Game](./media/single_game_5500_epoch_45090.gif)|![Single End Game](./media/single_game_end_max_cap_300.gif)|
 | Frames Seen | 1400k | 5700k | 12300k		    |
 | Epsilon     | .75  | .42   | 0 			      | 
 | Steps taken | 200 (max)    | 62 | 187	|
