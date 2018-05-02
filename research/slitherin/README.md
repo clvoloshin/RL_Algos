@@ -85,28 +85,33 @@ We use the following neural network and hyperparameters
 
 ![Natural Structure](./media/simple.png) 
 
-|Param																				    	| Number|
-|---------------------------------------------------|-------|
-|Number of games to play (iterations)				        |  10000|
-|Batch Size 																	      |  64   |
-|Update Frequency 																	|  500  |
-|Double DQN? 																			  |  True |
-|Prioritized Experience Replay?     							  |  False|
-|Buffer Size																				|  50000|
-|Gradient Clip																			|  None |
-|Number of minibatches															|  1    |
-|Max epsilon																				|  1.0  |
-|Min epsilon																				|  .01  |
-|Epsilon num_steps																	|  9000 |
-|How many frames to add before starting training		|  25000|
-|Frames between learning steps 											|  4    |
-|Maximum steps snake can take												|  100  |
+|Param                                              | Number| Description      |
+|---------------------------------------------------|-------|------------------|
+|Iterations                                         |  10000| Number of full games to play|
+|Batch Size                                         |  64   | Mini-batch size for NN|
+|Update Frequency                                   |  500  | How often to update target network |
+|Double DQN?                                        |  True | Whether or not to use double dqn|
+|Prioritized Experience Replay?                     |  False| Whether or not to use a prioritized buffer|
+|Buffer Size                                        |  50000| Number of frames stored in the buffer |
+|Gamma                                              |  .99  | Factor which prioritizes shorter term rewards |
+|Gradient Clip                                      |  None | Maximum gradient allowable|
+|Batches per batches                                |  1    | How many minibatches per train step|
+|Max epsilon                                        |  1.0  | Probability with which to take random action|
+|Min epsilon                                        |  .01  | Probability with which to take random action|
+|Epsilon num_steps                                  |  9000 | The number of steps to linearly interpolate between max/min epsilon|
+|Start Train t                                      |  25000| How many frames to add to buffer before starting training|
+|Frames between learning steps                      |  4    | Number of frames added to buffer between training steps|
+|Minimum learning steps per iteration               |  unset| Make sure this number of training steps occurs per iteration|
+|Maximum learning steps per iteration               |  unset| Make sure no more than this number of training steps occurs per iteration|
+|Maximum number of steps                            |  100  | Number of steps the snake can take before episode completion|    
 
-|Number of steps    																| Learning Rate|
+
+
+|Number of steps                                    | Learning Rate|
 |---------------------------------------------------|--------------|
-| 0	   																							|	1e-3	       |
-| 20000																							|	5e-3	       |
-| 50000																							|	1e-4	       |
+| 0                                                 |   1e-3       |
+| 20000                                             |   5e-3       |
+| 50000                                             |   1e-4       |
 
 Setting seed=3, we yield the following curves:
 
@@ -115,18 +120,18 @@ Setting seed=3, we yield the following curves:
 
 Visualizing learning over time:
 
-| Game        | 2500 | 5500  | Post Learning|   
-|-------------|------|-------|--------------|
+| Game        | 2500 | 5500      | Post Learning|   
+|-------------|------|-----------|--------------|
 | |![Simple Start Game](./media/simple_game_2500_epoch_10500.gif)|![Simple Mid Game](./media/simple_game_5500_epoch_67590.gif)|![Simple End Game](./media/simple_game_end_max_cap_300.gif)|
-| Frames Seen | 672k | 4300k | 10000k		    |
-| Epsilon     | .75  | .42   | 0 			      | 
+| Frames Seen | 672k | 4300k     | 10000k		     |
+| Epsilon     | .75  | .42       | 0 			        | 
 | Steps taken | 8    | 100 (max) | 300+ (unbounded)	|
-| Food Eaten  | 0    | 5     | 9   			    |
+| Food Eaten  | 0    | 5         | 9   			      |
 
 Notice that after 5500 iterations, the snake does well at avoiding walls, but ends itself in an (seemingly) infinite loop around the food.
 Similarly, after 10000 interations (post learning) the snake has learned that eating some food is good, but eventually finds itself doing infinite loops near the wall.
 This is due to incomplete training; once the snake gets too long it recognizes that it's better to not run into itself than risk getting food and dying.
-However, had the snake seen enough samples, it would have been able to get beyond this quirky behavior.
+However, had the snake seen enough samples, it would have been able to get beyond this quirky behavior. This motivated me to implement prioritized experience replay which has been shown before to place priority on samples which improve the model the most rather than hoping to learn through random sampling (which works in expectation, but could take forever).
 
 
 
@@ -181,31 +186,36 @@ We use the following neural network and hyperparameters
 
 ![General Structure](./media/single.png) 
 
-|Param																				    	| Number|
-|---------------------------------------------------|-------|
-|Number of games to play (iterations)				        |  10000|
-|Batch Size 																	      |  128  |
-|Update Frequency 																	|  500  |
-|Double DQN? 																			  |  True |
-|Prioritized Experience Replay?     							  |  True |
-|Buffer Size																				|  50000|
-|Gradient Clip																			|  None |
-|Number of minibatches															|  1    |
-|Max epsilon																				|  1.0  |
-|Min epsilon																				|  .01  |
-|Epsilon num_steps																	|  9500 |
-|How many frames to add before starting training		|  25000|
-|Frames between learning steps 											|  4    |
-|Maximum steps snake can take												|  200  |
-|Max beta   																				|  1.0  |
-|Min beta	    																			|  .4   |
-|Epsilon num_steps																	| 50000 |
+|Param                                            | Number| Description      |
+|-------------------------------------------------|-------|------------------|
+|Iterations                                       |  10000| Number of full games to play|
+|Batch Size                                       |  128  | Mini-batch size for NN|
+|Update Frequency                                 |  500  | How often to update target network |
+|Double DQN?                                      |  True | Whether or not to use double dqn|
+|Prioritized Experience Replay?  (PER)            |  True | Whether or not to use a prioritized buffer|
+|Buffer Size                                      |  50000| Number of frames stored in the buffer |
+|Gamma                                            |  .99  | Factor which prioritizes shorter term rewards |
+|Gradient Clip                                    |  None | Maximum gradient allowable|
+|Batches per batches                              |  1    | How many minibatches per train step|
+|Max epsilon                                      |  1.0  | Probability with which to take random action|
+|Min epsilon                                      |  .01  | Probability with which to take random action|
+|Epsilon num_steps                                |  9500 | The number of steps to linearly interpolate between max/min epsilon|
+|Start Train t                                    |  25000| How many frames to add to buffer before starting training|
+|Frames between learning steps                    |  4    | Number of frames added to buffer between training steps|
+|Minimum learning steps per iteration             |  1    | Make sure this number of training steps occurs per iteration|
+|Maximum learning steps per iteration             |  12   | Make sure no more than this number of training steps occurs per iteration|
+|Maximum number of steps                          |  200  | Number of steps the snake can take before episode completion|
+|Max beta                                         |  1.0  | Factor to balance out bias due to PER|
+|Min beta                                         |  .4   | Factor to balance out bias due to PER|
+|Beta number of steps                             | 50000 | The number of steps to linearly interpolate between max/min beta|
+|Alpha                                            | .5    | Interpolation between greedy and uniform prioritization for PER |  
+|Alpha epsilon                                    | 1e-8  | A small number to make sure probabilities are non-zero for PER |  
 
-|Number of steps    																| Learning Rate|
+|Number of steps                                    | Learning Rate|
 |---------------------------------------------------|--------------|
-| 0	   																							|	1e-3	       |
-| 20000																							|	5e-3	       |
-| 50000																							|	1e-4	       |
+| 0                                                 |   1e-3       |
+| 20000                                             |   5e-3       |
+| 50000                                             |   1e-4       |
 
 Setting seed=5, we yield the following curves:
 
