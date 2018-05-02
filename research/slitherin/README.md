@@ -175,9 +175,11 @@ The state is given by a list of sparse array of shape (8, 8).
   * 1 for food
   * 0 otherwise
   
-Hence, for our example, we'd have a list of (in their sparse matrix form, to conserve space):
+Hence, for our example, we'd have a list of (but in their sparse form, rather):
 
 <img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/body.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/head.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/food.png" width="250" height="150">
+
+**Sparsity is to conserve system memory in case**
 
 In the 1 snake case, the list is then of shape (3,8,8). However in the multi-snake case, it's (number of snakes + 1, 8,8).
 
