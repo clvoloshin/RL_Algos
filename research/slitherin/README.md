@@ -22,7 +22,7 @@ pip install -e .
 python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3 -hless
 python train_single.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 5 -hless
 ~~~
-*Make sure you you specify the correct director for /dir/*
+*Make sure you you specify the correct directory for /dir/*
 
 ## 1 Snake
 
