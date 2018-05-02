@@ -132,7 +132,7 @@ class PrioritizedHistory(History):
             self.priorities.append(self.max_priority ** self.alpha)
 
     def sample_proportional(self, N):
-        # More efficient w tree if buffer_size is large, as in openAi implementation
+        # More efficient w tree if buffer_size is large, as in paper/openAi implementation
         return np.random.choice(np.arange(self.buffer_size), size=N, p=np.array(self.priorities)/sum(self.priorities))
 
     def sample(self, N, is_sparse=True, beta=1.):

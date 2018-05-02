@@ -113,13 +113,13 @@ def run(**kwargs):
                      update_freq=update_freq,
                      ddqn=True, # double dqn
                      buffer_size = buffer_size,
-                     clip_grad = 5.,
+                     clip_grad = None,
                      batches_per_epoch = batches_per_epoch
                      )
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(20, 1.0, 0.05)
-        learning_rate_schedule = PiecewiseSchedule([(0,5e-3),(1000,1e-3),(10000,3e-4)], outside_value=1e-4)
+        epsilon_schedule = LinearSchedule(iterations*9/10, 1.0, 0.01)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 

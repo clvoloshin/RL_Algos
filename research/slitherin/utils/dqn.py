@@ -114,7 +114,7 @@ class DQN(object):
             loss = self.loss_func(self.error) #+ self.l2_loss
 
             if isinstance(self.buffer, PrioritizedHistory):
-                self.loss = tf.reduce_mean(self.weights * loss)
+                self.loss = tf.reduce_sum(self.weights * loss)
             else:
                 self.loss = tf.reduce_sum(loss) #mean? LR should take care of it
             

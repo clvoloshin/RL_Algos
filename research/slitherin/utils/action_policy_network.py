@@ -42,7 +42,8 @@ def create_residual(n_resid_blocks):
 def create_basic(n_conv_layers, transpose=True):
     return lambda *args, **kwargs: Basic(n_conv_layers, transpose=transpose, *args, **kwargs)
 
-def Basic(n_conv_layers, input_x, training, n_actions, scope, reuse=False, transpose=True):
+def Basic(layers, input_x, training, n_actions, scope, reuse=False, transpose=True):
+    assert len(layers) == 3
     with tf.variable_scope(scope, reuse=reuse):
         
         with tf.variable_scope('input'):
@@ -52,16 +53,16 @@ def Basic(n_conv_layers, input_x, training, n_actions, scope, reuse=False, trans
                 x = input_x
             
         with tf.variable_scope('conv_layer1'):
-            conv_layer_1 = conv_layer(x, filter=16, kernel=[5, 5], stride=1, scope='conv_1', bias=True, activation=tf.nn.leaky_relu)
+            conv_layer_1 = conv_layer(x, filter=layers[0], kernel=[5, 5], stride=1, scope='conv_1', bias=True, activation=tf.nn.leaky_relu)
 
         with tf.variable_scope('conv_layer2'):
-            conv_layer_2 = conv_layer(conv_layer_1, filter=16, kernel=[3, 3], stride=1, scope='conv_2', bias=True, activation=tf.nn.leaky_relu)
+            conv_layer_2 = conv_layer(conv_layer_1, filter=layers[1], kernel=[3, 3], stride=1, scope='conv_2', bias=True, activation=tf.nn.leaky_relu)
 
         with tf.variable_scope('out'):
             # feature_reduction = conv_layer(conv_layer_2, filter=1, kernel=[1, 1], stride=1, scope='out'+'_conv1', activation=tf.nn.relu)
             reshaped = tf.reshape(conv_layer_2, [-1, int(np.prod(conv_layer_2.shape[1:]))])
 
-            pre = linear(reshaped, 64, bias=True, scope='out_linear1', activation=tf.nn.leaky_relu)
+            pre = linear(reshaped, layers[2], bias=True, scope='out_linear1', activation=tf.nn.leaky_relu)
             out = linear(pre, n_actions, bias=True, scope='final', activation = None)
 
         return out

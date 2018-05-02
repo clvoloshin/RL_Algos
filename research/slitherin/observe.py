@@ -1,3 +1,6 @@
+'''
+Plays latest snake assuming greedy policy
+'''
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" #Should ideally check for GPU; assume exists for now
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -69,8 +72,8 @@ def run(**kwargs):
     with tf.Session() as sess:
         network = DQN( 
                      sess,
-                     create_basic(3, transpose=True),
-                     [1,env.world.screen_width,env.world.screen_height], 
+                     create_basic([64,64,256], transpose=True),
+                     [(env.world.number_of_snakes)*2 + 1, env.world.screen_width,env.world.screen_height],
                      None,
                      n_actions=4, 
                      batch_size=None,
@@ -80,7 +83,8 @@ def run(**kwargs):
                      buffer_size = None,
                      clip_grad = None,
                      batches_per_epoch = None,
-                     is_sparse = False
+                     is_sparse = False,
+                     use_priority=False
                      )
 
         monitor = Monitor(os.path.join(logdir,'test_gifs'))
@@ -118,10 +122,10 @@ def run(**kwargs):
 
 
         for iteration in range(5):
-            _ = env.reset()
-            obs = env.render('rgb_array', headless = headless).astype(float)
-            obs /= obs.max()
-            obs = rgb2gray(obs)
+            obs = env.reset()
+            # obs = env.render('rgb_array', headless = headless).astype(float)
+            # obs /= obs.max()
+            # obs = rgb2gray(obs)
 
             done_n = np.array([False]*env.n_actors)
             steps = 0
@@ -144,21 +148,21 @@ def run(**kwargs):
 
                     monitor.add(rgb, iteration, iteration)
 
-                last_obs = obs
-                acts = network.greedy_select([[last_obs]], 0) 
+                last_obs = np.array([[x.A for x in obs]])
+                acts = network.greedy_select(last_obs, 0) #network.greedy_select([[last_obs]], 0) 
                 acts = [str(x) for x in acts]
       
                 # Next step
-                _, reward_n, done_n = env.step(acts[-1])
-                obs = env.render('rgb_array', headless = headless).astype(float)
-                obs /= obs.max()
-                obs = rgb2gray(obs)
+                obs, reward_n, done_n = env.step(acts[-1])
+                # obs = env.render('rgb_array', headless = headless).astype(float)
+                # obs /= obs.max()
+                # obs = rgb2gray(obs)
 
                 steps += 1
                 if steps > 300:
                     break
 
-            monitor.make_gifs(iteration)
+            monitor.make_gifs(iteration, fps=12)
             pdb.set_trace()
             # Log diagnostics
             # returns = history.get_total_reward_per_sequence()

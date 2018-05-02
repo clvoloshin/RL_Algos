@@ -88,7 +88,7 @@ def run(**kwargs):
     with tf.Session() as sess:
         network = DQN( 
                      sess,
-                     create_basic(3, transpose=True),
+                     create_basic([16,16,64], transpose=True),
                      [1,env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
