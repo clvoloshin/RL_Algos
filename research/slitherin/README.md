@@ -183,11 +183,11 @@ Hence, for our example, we'd have a list of (but in their sparse form, rather):
 
 <img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/body.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/head.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/food.png" width="250" height="150">
 
-*Note: sparsity is to conserve system memory in case memory is scarse*
+*Note: sparsity is to conserve system memory in case memory is scarce*
 
 In the 1 snake case, the list is then of shape (3,8,8). However in the multi-snake case, it's (2*number of snakes + 1, 8,8), taking the form (Snake 1 body, Snake 1 head,..., Snake N body, Snake N head, food).
 
-I believe this will generalize better to multi-snake scenarios because the network need not learn anything about color/grayscale and can rely solely on the presense or absense of a snake, allowing multiple snakes to be represented by adding additional channels using the same stucture.
+I believe this will generalize better to multi-snake scenarios because the network need not learn anything about color/grayscale and can rely solely on the presence or absence of a snake, allowing multiple snakes to be represented by adding additional channels using the same stucture.
 
 
 I use the following neural network and hyperparameters
