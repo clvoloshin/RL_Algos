@@ -35,12 +35,12 @@ I tried two different representations (preprocessing) for the 1 snake scenario: 
 ### Natural
 *Note: all of the matrices shown are rotated by 90 degrees around the center of the matrix so that they match the images. In reality (in system memory), they are in unrotated form.*
 
-I chose to start here as a baseline, making sure my implementation was correct, since I knew that this task was solvable given the combination of CNN and DQN. Taking the SnakeWorld exactly as is, then making it grayscale. In other words, consider the rendering of the SnakeWorld is:
+I chose to start here as a baseline and make sure my implementation was correct, since I knew that this task was solvable given the Atari results combining CNN and DQN. Take the SnakeWorld exactly as rendered, then make it grayscale. In other words, consider the rendering of the SnakeWorld is:
 
 ![Example of SnakeWorld](./media/example.jpg) 
 *Note the colors: head is (0,0,127), while the body is (0,0,255)*
 
-This state is given by and RGB array of size (3, 8, 8) representing (channes, height, width).
+This state is given by an RGB array of size (3, 8, 8) representing (channels, height, width).
 
 <!---
 |255|255|255|255|255|255|255|255|
@@ -136,7 +136,7 @@ Visualizing learning over time:
 Notice that after 5500 iterations, the snake does well at avoiding walls, but ends itself in an (seemingly) infinite loop around the food.
 Similarly, after 10000 interations (post learning) the snake has learned that eating some food is good, but eventually finds itself doing infinite loops near the wall.
 This is due to incomplete training; once the snake gets too long it recognizes that it's better to not run into itself than risk getting food and dying.
-However, had the snake seen enough samples, it would have been able to get beyond this quirky behavior. This is, probably, most of the reason that reward flattens out over time. This motivated me to implement prioritized experience replay which has been shown before to place priority on samples which improve the model the most rather than hoping to learn through random sampling (which works in expectation, but could take forever).
+However, had the snake seen enough samples, it would have been able to get beyond this quirky behavior. This is, probably, most of the reason that reward flattens out over time. This motivated me to implement prioritized experience replay, which has been shown before to place priority on samples which improve the model the most rather than hoping to learn through random sampling (which works in expectation, but could take forever), in the next 1 snake case.
 
 
 
@@ -183,12 +183,11 @@ Hence, for our example, we'd have a list of (but in their sparse form, rather):
 
 <img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/body.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/head.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/food.png" width="250" height="150">
 
-**Sparsity is to conserve system memory in case**
+*Note: sparsity is to conserve system memory in case memory is scarse*
 
-In the 1 snake case, the list is then of shape (3,8,8). However in the multi-snake case, it's (number of snakes + 1, 8,8).
+In the 1 snake case, the list is then of shape (3,8,8). However in the multi-snake case, it's (number of snakes + 1, 8,8), taking the form (Snake 1 body, Snake 1 head,..., Snake N body, Snake N head, food).
 
-I believe this will generalize better to multi-snake scenarios (and beyond) because the network need not learn anything about color/gray and
-multiple snakes can be represented by adding additional channels using the same stucture.
+I believe this will generalize better to multi-snake scenarios because the network need not learn anything about color/grayscale and can rely solely on the presense or absense of a snake, allowing multiple snakes to be represented by adding additional channels using the same stucture.
 
 
 I use the following neural network and hyperparameters
@@ -241,7 +240,7 @@ Visualizing learning over time:
 | Steps taken | 200 (max)    | 62 | 187	|
 | Food Eaten  | 0    | 12     | 35 (all) |
 
-Through prioritized experience replay, I achieved some nice results where the snake is able to win the game, even given the input state structure which I believe to be more general than the "natural" way of using color. Notice reward also plateus in the generalized case as well, but that's because it will asymptotically approach the board-determined max reward of 35 (=(8-2)*(8-2)-1).
+Through prioritized experience replay, I achieved some nice results where the snake is able to win the game, even given the input state structure which I believe to be more general than the "natural" way of using color. Notice reward also plateaus in the generalized case as well, but that's because it will asymptotically approach the board-determined max reward of 35 (=(8-2)*(8-2)-1).
 
 
 
