@@ -28,7 +28,8 @@ class DQN(object):
                  is_sparse = True,
                  use_priority = False,
                  priority_alpha = .5,
-                 priority_eps = 1e-8
+                 priority_eps = 1e-8,
+                 _id = '0'
                  ):
 
         self.sess = sess
@@ -58,10 +59,15 @@ class DQN(object):
 
         self.loss_func = huber_loss
 
-        self.scope = 'main'
+        self.id = str(_id)
+        self.scope = 'main' + self.id
         self.reuse = None
         
         self.build()
+
+    def __str__(self):
+        return 'DQN %s' % self.id
+
 
     @staticmethod
     def copy_to_target(source_, target_):
@@ -94,7 +100,7 @@ class DQN(object):
             # not currently resettable => TODO
             #self.streaming_Q, self.streaming_Q_update = tf.contrib.metrics.streaming_mean(tf.reduce_mean(self.Q))
             #tf.summary.histogram("Q Value", self.streaming_Q)
-            tf.summary.histogram("Q Value", tf.reduce_mean(self.Q))
+            self.Q_summary = tf.summary.histogram("Q Value", tf.reduce_mean(self.Q))
             
 
             if self.ddqn:
@@ -136,11 +142,11 @@ class DQN(object):
             # not currently resettable => TODO
             #self.streaming_loss, self.streaming_loss_update = tf.contrib.metrics.streaming_mean(self.loss)
             #tf.summary.scalar('Loss', self.streaming_loss)
-            tf.summary.scalar('Loss', tf.reduce_mean(self.loss))
+            self.loss_summary = tf.summary.scalar('Loss', tf.reduce_mean(self.loss))
             
             # tf.summary.scalar('Loss', self.loss)
             self.set_new_network = self.copy_to_target(self.net_variables, self.target_net_variables)
-            self.summarize = tf.summary.merge_all()
+            self.summarize = tf.summary.merge([self.loss_summary, self.Q_summary])
             
     
     def store(self, state, action, reward, next_state, done):
@@ -195,7 +201,7 @@ class DQN(object):
                                     self.learning_rate: learning_rate_schedule.value(self.epoch)} )
 
         if isinstance(self.buffer, PrioritizedHistory): 
-            to_write = self.sess.run(self.summarize, { self.weights: weights, self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )
+            to_write = self.sess.run(self.summarize, { self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch), self.weights: weights} )
         else:
             to_write = self.sess.run(self.summarize, { self.state: obs, self.next_state: new_obs, self.action: act, self.done: done, self.reward: rew, self.training: True, self.learning_rate: learning_rate_schedule.value(self.epoch)} )        
         

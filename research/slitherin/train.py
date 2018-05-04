@@ -17,24 +17,30 @@ from utils.dqn import DQN
 from utils.monitor import Monitor
 from utils.schedules import LinearSchedule, PiecewiseSchedule
 
-def get_data(obs):
-    assert obs.shape[0] < 3
-    data = obs#[:,:-1]
-    if obs.shape[0] == 2:
-        data = np.vstack([data, np.diff(data,axis=0)])
-    else:
-        data = np.vstack([data, np.array([[sparse.csr_matrix(data[0][0].shape) for _ in range(data.shape[1]) ]]) ])
+# def get_data(obs):
+#     assert obs.shape[0] < 3
+#     data = obs#[:,:-1]
+#     if obs.shape[0] == 2:
+#         data = np.vstack([data, np.diff(data,axis=0)])
+#     else:
+#         data = np.vstack([data, np.array([[sparse.csr_matrix(data[0][0].shape) for _ in range(data.shape[1]) ]]) ])
 
-    # only care about X_i and delta X_i
-    data = data[-2:]
+#     # only care about X_i and delta X_i
+#     data = data[-2:]
 
-    player_idx = []
-    for idx in range(data.shape[1]-1):
-        idxs = np.array([False]*(data.shape[1]))
-        idxs[idx] = True
-        player_idx.append(np.hstack([data[:,idxs].reshape(-1), data[:,~idxs].T.reshape(-1)])) # Transpose so that you get column ordering rather than row ordering (C vs Fortran)
+#     player_idx = []
+#     for idx in range(data.shape[1]-1):
+#         idxs = np.array([False]*(data.shape[1]))
+#         idxs[idx] = True
+#         player_idx.append(np.hstack([data[:,idxs].reshape(-1), data[:,~idxs].T.reshape(-1)])) # Transpose so that you get column ordering rather than row ordering (C vs Fortran)
 
-    return np.vstack(player_idx)
+#     return np.vstack(player_idx)
+
+def get_data(obs, actor):
+    assert ((len(obs) % 2) == 1)
+    return obs[actor*2:((actor+1)*2)] + obs[:actor*2] + obs[((actor+1)*2):]
+
+
 
 def repeat_upsample(rgb_array, k=1, l=1, err=[]):
     # repeat kinda crashes if k/l are zero
@@ -70,6 +76,7 @@ def run(**kwargs):
     headless=kwargs['headless']
     update_freq=kwargs['update_freq']
     buffer_size=kwargs['buffer_size']
+    use_priority=kwargs['use_priority']
 
     if headless:
         import matplotlib
@@ -102,10 +109,14 @@ def run(**kwargs):
     summary_writers.append(tf.summary.FileWriter(os.path.join(logdir,'tensorboard','training_stats') ))    
 
     with tf.Session() as sess:
-        network = DQN( 
+        
+        networks = []
+
+        for i in range(env.n_actors):
+            networks.append( DQN( 
                      sess,
-                     create_basic(3),
-                     [(env.world.number_of_snakes)*2 + 1, env.world.screen_width,env.world.screen_height], 
+                     create_basic([128,128,256], transpose=True),
+                     [(env.n_actors)*2 + 1, env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
                      batch_size=batch_size,
@@ -114,11 +125,16 @@ def run(**kwargs):
                      ddqn=True, # double dqn
                      buffer_size = buffer_size,
                      clip_grad = None,
-                     batches_per_epoch = batches_per_epoch
-                     )
+                     batches_per_epoch = batches_per_epoch,
+                     is_sparse = True,
+                     use_priority=use_priority,
+                     _id = i
+                     ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
         epsilon_schedule = LinearSchedule(iterations*9/10, 1.0, 0.01)
+        if use_priority:
+            beta_schedule = LinearSchedule(iterations*5, 0.4, 1.)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -153,37 +169,36 @@ def run(**kwargs):
         tic = time.time()
         total_timesteps = 0
 
-        while not network.buffer.full():
-            network.buffer.games_played += 1
-            print 'Game number: %s. Buffer_size: %s' % (network.buffer.games_played, network.buffer.buffer_size)
+        while not all([network.buffer.full(N=int(buffer_size/2.)) for network in networks]):
+            networks[0].buffer.games_played += 1
+            print 'Game number: %s. Buffer_sizes: %s' % (networks[0].buffer.games_played, [network.buffer.buffer_size for network in networks])
             obs = env.reset()
 
             done_n = np.array([False]*env.n_actors)
             steps = 0
             length_alive = np.array([0] * env.n_actors)
+            viewer = None
             while not done_n.all():
+
                 length_alive[env.world.idxs_of_alive_snakes] += 1
                 last_obs = obs
-                acts = network.greedy_select(np.array([[x.A for x in last_obs]]), 1.) 
-                acts = [str(x) for x in acts]
+
+                acts = []
+                for i, network in enumerate(networks):
+                    act = network.greedy_select(np.array([[x.A for x in get_data(last_obs, i)]]), 1.) 
+                    acts += [str(act[0])]
       
                 # Next step
-                obs, reward_n, done_n = env.step(acts[-1])
+                obs, reward_n, done_n = env.step(acts)
                 steps += 1
 
-                # network.store(np.array(get_data(np.array(raw_observations)[-3:-1])), # state
-                #               np.array(acts), # action
-                #               np.array(reward_n), #rewards
-                #               np.array(get_data(np.array(raw_observations)[-2:])), #new state
-                #               np.array(done_n) #done
-                #               )
-
-                network.store(np.array(last_obs), # state
-                                  np.array(acts), # action
-                                  np.array(reward_n), #rewards
-                                  np.array(obs), #new state
-                                  np.array(done_n) #done
-                                  )
+                for i in env.world.idxs_of_alive_snakes:
+                    networks[i].store(np.array(get_data(last_obs, i)), # state
+                                      np.array(acts[i]), # action
+                                      np.array(reward_n[i]), #rewards
+                                      np.array(get_data(obs, i)), #new state
+                                      np.array(done_n[i]) #done
+                                      )
 
                 # terminate the collection of data if the controller shows stability
                 # for a long time. This is a good thing.
@@ -192,10 +207,9 @@ def run(**kwargs):
 
         print 'Filled Buffer'
 
-
         for iteration in range(iteration_offset, iteration_offset + iterations):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
-            network.buffer.soft_reset()
+            networks[0].buffer.soft_reset()
             timesteps_in_iteration = 0
 
             if (iteration % update_freq == 0):
@@ -207,9 +221,9 @@ def run(**kwargs):
             total_reward = np.array([0]*env.n_actors)
 
             while True:
-                network.buffer.games_played += 1
-                if (((network.buffer.games_played) % 10) == 0):
-                    print 'Epoch: %s. Game number: %s' % (iteration, network.buffer.games_played)
+                networks[0].buffer.games_played += 1
+                if (((networks[0].buffer.games_played) % 10) == 0):
+                    print 'Epoch: %s. Game number: %s' % (iteration, networks[0].buffer.games_played)
                 obs = env.reset()
                 epsilon_schedule.reset()
 
@@ -217,7 +231,7 @@ def run(**kwargs):
                 # raw_observations.append(np.array(obs))
 
 
-                animate_episode = ((network.buffer.games_played-1)==0) and (iteration % update_freq == 0) and animate
+                animate_episode = ((networks[0].buffer.games_played-1)==0) and (iteration % update_freq == 0) and animate
 
                 done_n = np.array([False]*env.n_actors)
                 steps = 0
@@ -243,71 +257,63 @@ def run(**kwargs):
                             viewer.imshow(rgb)
                             time.sleep(.01)
 
-                        monitor.add(rgb, iteration, network.buffer.games_played)
-
+                        monitor.add(rgb, iteration, networks[0].buffer.games_played)
 
                     length_alive[env.world.idxs_of_alive_snakes] += 1
-
-                    
                     # ob = get_data(np.array(raw_observations)[-2:])
                     last_obs = obs
 
                     # Control the exploration
-                    if network.buffer.games_played < (games_played_per_epoch/2):
-                        # play half of the games w/ full greedy strategy
-                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), -1. ) # full greedy 
-
-                    else:
-                        # play other half w/ epsilon greedy
-                        acts = network.greedy_select(np.array([[x.A for x in last_obs]]), epsilon_schedule.next()) # epsilon greedy
-
-                    acts = [str(x) for x in acts]
+                    acts = []
+                    for i, network in enumerate(networks):
+                        act = network.greedy_select(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch)) 
+                        acts += [str(act[0])]
           
                     # Next step
-                    obs, reward_n, done_n = env.step(acts[-1])
+                    obs, reward_n, done_n = env.step(acts)
 
-                    if network.buffer.games_played < (games_played_per_epoch/2):
-                        # see how good the learned policy becomes over time.
-                        # Need the 'if' condition because the other games are played randomly, affecting the stats
-                        total_reward += np.array(reward_n)
-                    # raw_observations.append(np.array(obs))
+                    total_reward += np.array(reward_n)
+                    
+                    total_number_of_steps_in_iteration += 1
                     steps += 1
 
-                    network.store(np.array(last_obs), # state
-                                  np.array(acts), # action
-                                  np.array(reward_n), #rewards
-                                  np.array(obs), #new state
-                                  np.array(done_n) #done
-                                  )
+                    for i in env.world.idxs_of_alive_snakes:
+                        networks[i].store(np.array(get_data(last_obs, i)), # state
+                                      np.array(acts[i]), # action
+                                      np.array(reward_n[i]), #rewards
+                                      np.array(get_data(obs, i)), #new state
+                                      np.array(done_n[i]) #done
+                                      )
 
                     # terminate the collection of data if the controller shows stability
                     # for a long time. This is a good thing.
                     if steps > maximum_number_of_steps:
                         done_n[:] = True
 
-                total_number_of_steps_in_iteration += steps
-
                 if viewer:
                     viewer.close()
 
-                if network.buffer.games_played >= games_played_per_epoch:
+                if networks[0].buffer.games_played >= 1:
                     break
 
-            monitor.make_gifs(iteration)
-            network.train_step(learning_rate_schedule)
+            # max: to cover all new steps added to buffer, min: to not overdo too much
+            for i,network in enumerate(networks):
+                for _ in range(min(max(maximum_number_of_steps/batch_size + 1,length_alive[i]/4), 12)): # learn every 4 frames, up to a total of 5 times.
+                    if use_priority:
+                        network.train_step(learning_rate_schedule, beta_schedule)
+                    else:
+                        network.train_step(learning_rate_schedule)
+                monitor.make_gifs(iteration)
+            
             
             for count, writer in enumerate(summary_writers):
                 if count < (len(summary_writers) - 1):
                     summary = tf.Summary()
-                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]/float(games_played_per_epoch/2)))
+                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
+                    summary.value.add(tag='Steps Taken', simple_value=(steps))
                     writer.add_summary(summary, iteration)
                 writer.flush()
                     
-
-            # Log diagnostics
-            # returns = history.get_total_reward_per_sequence()
-            # ep_lengths = history.get_timesteps()
-
             
 
 def main():
@@ -328,6 +334,7 @@ def main():
     parser.add_argument('--buffer_size', '-bs', type=int, default=10000)
     parser.add_argument('--update_freq', '-uf', type=int, default=10000)
     parser.add_argument('--headless', '-hless', action='store_true')
+    parser.add_argument('--use_priority', '-priority', action='store_true')
     args = parser.parse_args()
 
     if not(os.path.exists('output')):
@@ -360,7 +367,8 @@ def main():
         batches_per_epoch=args.batches_per_epoch,
         headless=args.headless,
         update_freq=args.update_freq,
-        buffer_size=args.buffer_size)
+        buffer_size=args.buffer_size,
+        use_priority=args.use_priority)
 
 if __name__ == "__main__":
     main()

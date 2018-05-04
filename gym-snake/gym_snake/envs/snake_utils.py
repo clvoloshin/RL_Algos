@@ -3,6 +3,7 @@ import numpy as np
 from food import Food
 import time
 import pdb
+import itertools
 
 def get_implied_board(snake, screen_width, screen_height, fill = 1):
         '''
@@ -123,10 +124,14 @@ def check_which_snakes_are_still_alive(snakes, num_rows, num_cols):
             num_cols: int
                 height of gridworld
     '''
+
+    # Need this array to eliminate the problem of which order objects occur in the param snakes
+    snake_alive = [snake.alive for idx,snake in enumerate(snakes)]
+
     for i,snake in enumerate(snakes):
-        if snake.alive:
+        if snake_alive[i]:
             for j, other_snake in enumerate(snakes):
-                if other_snake.alive:
+                if snake_alive[j]:
                     if i != j:
                         check_if_snake_hit_other_snake(snake, other_snake)
                     else:
@@ -198,7 +203,6 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
     # check which snakes are valid
     check_which_snakes_are_still_alive(snakes, num_rows, num_cols) # kills snakes which hit other snakes, themselves, or boundary
 
-    
     idxs_of_alive_snakes = [idx for idx,snake in enumerate(snakes) if snake.alive] # enumerate alive snakes
     boards[np.array([not x.alive for x in snakes])] = sparse.csr_matrix((num_rows, num_cols)) # set dead snakes' boards as all zero
 
@@ -236,6 +240,18 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
         else:
             heads.append(sparse.csr_matrix((num_rows, num_cols)))
 
-    state = boards.tolist() + heads + [food_board]
+    for i, snake in enumerate(snakes):
+        if not snake.alive:
+            assert boards[i].nnz == 0
+            assert heads[i].nnz == 0
+        else:
+            assert boards[i].nnz == snake.length
+            assert heads[i].nnz == 1
+
+
+    # Make into (snake0 body, snake0 head,...,snakeN body, snakeN head)
+    snake_boards = list(itertools.chain(*zip(boards.tolist(), heads)))
+
+    state = snake_boards + [food_board]
     return state, idxs_of_alive_snakes
 
