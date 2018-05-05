@@ -274,13 +274,13 @@ class SelfPlay(DQN):
             is_greedy = True
             action = self.greedy_select(state, epsilon)
 
-        return [action], is_greedy
+        return action, is_greedy
 
     def average_policy_select(self, obs):
         policy = self.sess.run(tf.nn.softmax(self.logits), {self.policy_state: obs, self.training:False } )[0]
         action = np.random.choice(range(self.n_actions), p=policy)
 
-        return action
+        return [action]
 
     def build_average_policy_network(self):
         with tf.variable_scope(self.avg_policy_scope, reuse=self.reuse):
@@ -306,7 +306,7 @@ class SelfPlay(DQN):
 
         for batch_num in np.arange(self.batches_per_epoch):
             # Sample experience from replay memory
-            obs, act  = self.reservoir.sample(self.policy_batch_size, is_sparse=self.is_sparse)
+            obs, act  = self.reservoir.sample(self.avg_policy_batch_size, is_sparse=self.is_sparse)
 
             # Perform training
             #_,_,_ = self.sess.run([self.streaming_loss_update, self.streaming_Q_update, self.train],
