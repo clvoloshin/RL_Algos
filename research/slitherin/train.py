@@ -13,7 +13,7 @@ from utils.history import History
 from utils.action_policy_network import create_residual, create_basic
 from utils.mcts.mcts import *
 from utils.mcts.graph import Node
-from utils.dqn import DQN
+from utils.dqn import DQN, SelfPlay
 from utils.monitor import Monitor
 from utils.schedules import LinearSchedule, PiecewiseSchedule
 
@@ -77,6 +77,7 @@ def run(**kwargs):
     update_freq=kwargs['update_freq']
     buffer_size=kwargs['buffer_size']
     use_priority=kwargs['use_priority']
+    policy_batch_size=kwargs['policy_batch_size']
 
     if headless:
         import matplotlib
@@ -113,7 +114,7 @@ def run(**kwargs):
         networks = []
 
         for i in range(env.n_actors):
-            networks.append( DQN( 
+            networks.append( SelfPlay( 
                      sess,
                      create_basic([128,128,256], transpose=True),
                      [(env.n_actors)*2 + 1, env.world.screen_width,env.world.screen_height], 
@@ -128,11 +129,13 @@ def run(**kwargs):
                      batches_per_epoch = batches_per_epoch,
                      is_sparse = True,
                      use_priority=use_priority,
-                     _id = i
+                     _id = i,
+                     policy_batch_size = policy_batch_size
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
         epsilon_schedule = LinearSchedule(iterations*9/10, 1.0, 0.01)
+        eta_schedule = LinearSchedule(iterations*9/10, 0.2, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations*5, 0.4, 1.)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
@@ -200,6 +203,9 @@ def run(**kwargs):
                                       np.array(done_n[i]) #done
                                       )
 
+                    networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
+                                                        np.array(int(acts[i])))
+
                 # terminate the collection of data if the controller shows stability
                 # for a long time. This is a good thing.
                 if steps > maximum_number_of_steps:
@@ -265,9 +271,11 @@ def run(**kwargs):
 
                     # Control the exploration
                     acts = []
+                    is_greedys = []
                     for i, network in enumerate(networks):
-                        act = network.greedy_select(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch)) 
+                        act, is_greedy = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch), eta_schedule.value(network.epoch)) 
                         acts += [str(act[0])]
+                        is_greedys.append(is_greedy)
           
                     # Next step
                     obs, reward_n, done_n = env.step(acts)
@@ -284,6 +292,9 @@ def run(**kwargs):
                                       np.array(get_data(obs, i)), #new state
                                       np.array(done_n[i]) #done
                                       )
+                        if True: #is_greedys[i]:
+                            networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
+                                                        np.array(int(acts[i])))
 
                     # terminate the collection of data if the controller shows stability
                     # for a long time. This is a good thing.
@@ -301,6 +312,7 @@ def run(**kwargs):
                 for _ in range(min(max(maximum_number_of_steps/batch_size + 1,length_alive[i]/4), 12)): # learn every 4 frames, up to a total of 5 times.
                     if use_priority:
                         network.train_step(learning_rate_schedule, beta_schedule)
+                        network.avg_policy_train_step(learning_rate_schedule)
                     else:
                         network.train_step(learning_rate_schedule)
                 monitor.make_gifs(iteration)
@@ -323,6 +335,7 @@ def main():
     parser.add_argument('--discount', type=float, default=1.0)
     parser.add_argument('--iterations', '-n', type=int, default=100)
     parser.add_argument('--batch_size', '-b', type=int, default=32)
+    parser.add_argument('--policy_batch_size', '-p_b', type=int, default=32)
     parser.add_argument('--num_batches', '-n_batch', type=int, default=10) # num batch/epoch
     parser.add_argument('--sequence_length', '-seq', type=int, default=200)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
@@ -368,7 +381,8 @@ def main():
         headless=args.headless,
         update_freq=args.update_freq,
         buffer_size=args.buffer_size,
-        use_priority=args.use_priority)
+        use_priority=args.use_priority,
+        policy_batch_size=args.policy_batch_size)
 
 if __name__ == "__main__":
     main()

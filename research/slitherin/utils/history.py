@@ -200,3 +200,74 @@ class PrioritizedHistory(History):
         Returns [\sum_{i=0}^T x[i] * gamma^i, \sum_{i=1}^T x[i] gamma^{i-1}, ...]
         '''
         return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+
+class Reservoir(History):
+    def __init__(self, delta):
+        '''
+        Reservoir Buffer used for Reservoir Sampling
+
+        Param
+            delta: float >= 1 (beta in the paper. Not to be confused w Prioritized buffer beta)
+                If = 1 then uniform reservoir sampling
+                If > 1 then exponential reservoir sampling
+
+        '''                
+        super(Reservoir, self).__init__(np.inf)
+        assert delta >= 1
+        self.delta = delta
+    
+    def sample_proportional(self, k):
+        idxs = range(k)
+        
+        number_seen = k
+        for j in range(k+1, self.buffer_size):
+            if np.random.uniform() < (k/(self.delta * number_seen)):
+                idx_to_replace = np.random.choice(range(k), 1)
+                idxs[idx_to_replace[0]] = j
+
+            number_seen += 1
+
+        return np.array(idxs)
+
+    def unpack(self, idxs):
+        data = np.array(self.data)[idxs]
+        obs, act = data[:,0],data[:,1]
+
+        obs, acts = np.vstack(obs), np.hstack(act)
+        return obs, acts
+
+    def sample(self, k, is_sparse=True):
+        '''
+            p_k ~= k/(beta*buffer_size) (assuming e^(-x) = 1-x for x small)
+        '''
+
+        k = min(k, self.buffer_size)
+        idxs = self.sample_proportional(k)
+        
+        if idxs.shape[0]:
+            obs, acts = self.unpack(idxs)
+        else:
+            return None, None
+
+        if is_sparse:
+            return np.array([[x.A for x in y] for y in obs]), acts
+        else:
+            return obs, acts
+
+    def append(self,**kwargs):
+        
+
+        observations = kwargs['obs']
+        actions = kwargs['actions']
+        
+        data = (observations, actions)
+        self.data.append(data)
+        self.buffer_size += 1
+            
+
+
+
+
+
+
+
