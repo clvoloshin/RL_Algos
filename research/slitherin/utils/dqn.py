@@ -291,7 +291,7 @@ class SelfPlay(DQN):
 
             self.logits = self.model(self.policy_state, self.policy_training, self.n_actions, scope='net')            
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels = self.policy_action, logits=self.logits)
-            loss = tf.reduce_sum(loss) #mean? LR should take care of it
+            loss = tf.reduce_mean(loss) 
             
             optimizer = tf.train.AdamOptimizer(learning_rate=self.policy_learning_rate) #MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)
             
