@@ -92,7 +92,7 @@ def run(**kwargs):
     ################################################################
     # SETUP GYM + RL ALGO
     ################################################################
-    env = gym.make('snake-v0') # Make the gym environment
+    env = gym.make('snake-v1') # Make the gym environment
     maximum_number_of_steps = max_seq_length #or env.max_episode_steps # Maximum length for episodes
    
 
@@ -322,7 +322,7 @@ def run(**kwargs):
                 if count < (len(summary_writers) - 1):
                     summary = tf.Summary()
                     summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
-                    summary.value.add(tag='Steps Taken', simple_value=(steps))
+                    summary.value.add(tag='Steps Taken', simple_value=(length_alive[count]))
                     writer.add_summary(summary, iteration)
                 writer.flush()
                     
