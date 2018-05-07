@@ -134,11 +134,12 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*9/10, 1.0, 0.01)
-        eta_schedule = LinearSchedule(iterations*9/10, 0.2, 0.1)
+        epsilon_schedule = LinearSchedule(iterations*5/10, .5, 0.01)
+        eta_schedule = LinearSchedule(iterations*7/10, 0.2, 0.1)
         if use_priority:
-            beta_schedule = LinearSchedule(iterations*5, 0.4, 1.)
+            beta_schedule = LinearSchedule(iterations, 0.4, 1.)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
+        policy_learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(4000,5e-4),(15000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -213,7 +214,7 @@ def run(**kwargs):
 
         print 'Filled Buffer'
 
-        for iteration in range(iteration_offset, iteration_offset + iterations):
+        for iteration in range(iteration_offset, iteration_offset + iterations + 1):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
             networks[0].buffer.soft_reset()
             timesteps_in_iteration = 0
@@ -312,9 +313,12 @@ def run(**kwargs):
                 for _ in range(min(max(maximum_number_of_steps/batch_size + 1,length_alive[i]/4), 12)): # learn every 4 frames, up to a total of 5 times.
                     if use_priority:
                         network.train_step(learning_rate_schedule, beta_schedule)
-                        network.avg_policy_train_step(learning_rate_schedule)
                     else:
                         network.train_step(learning_rate_schedule)
+
+                for _ in range(2):
+                    network.avg_policy_train_step(policy_learning_rate_schedule)
+
                 monitor.make_gifs(iteration)
             
             
