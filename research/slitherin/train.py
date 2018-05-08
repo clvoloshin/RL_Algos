@@ -78,6 +78,7 @@ def run(**kwargs):
     buffer_size=kwargs['buffer_size']
     use_priority=kwargs['use_priority']
     policy_batch_size=kwargs['policy_batch_size']
+    reservoir_buffer_size=kwargs['reservoir_buffer_size']
 
     if headless:
         import matplotlib
@@ -130,11 +131,12 @@ def run(**kwargs):
                      is_sparse = True,
                      use_priority=use_priority,
                      _id = i,
-                     policy_batch_size = policy_batch_size
+                     policy_batch_size = policy_batch_size,
+                     reservoir_buffer_size = reservoir_buffer_size
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*5/10, .5, 0.01)
+        epsilon_schedule = LinearSchedule(iterations*7/10, .2, 0.001)
         eta_schedule = LinearSchedule(iterations*7/10, 0.2, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
@@ -204,8 +206,8 @@ def run(**kwargs):
                                       np.array(done_n[i]) #done
                                       )
 
-                    networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
-                                                        np.array(int(acts[i])))
+                    # networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
+                    #                                     np.array(int(acts[i])))
 
                 # terminate the collection of data if the controller shows stability
                 # for a long time. This is a good thing.
@@ -214,6 +216,7 @@ def run(**kwargs):
 
         print 'Filled Buffer'
 
+        to_learn = np.array([0] * env.n_actors)
         for iteration in range(iteration_offset, iteration_offset + iterations + 1):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
             networks[0].buffer.soft_reset()
@@ -226,7 +229,7 @@ def run(**kwargs):
             total_number_of_steps_in_iteration = 0
 
             total_reward = np.array([0]*env.n_actors)
-
+            
             while True:
                 networks[0].buffer.games_played += 1
                 if (((networks[0].buffer.games_played) % 10) == 0):
@@ -267,6 +270,7 @@ def run(**kwargs):
                         monitor.add(rgb, iteration, networks[0].buffer.games_played)
 
                     length_alive[env.world.idxs_of_alive_snakes] += 1
+                    to_learn[env.world.idxs_of_alive_snakes] += 1
                     # ob = get_data(np.array(raw_observations)[-2:])
                     last_obs = obs
 
@@ -297,6 +301,19 @@ def run(**kwargs):
                             networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
                                                         np.array(int(acts[i])))
 
+                    # max: to cover all new steps added to buffer, min: to not overdo too much
+                    for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= networks[x].batch_size]:
+                        to_learn[network_id] = 0
+                        network = networks[network_id]
+                        for _ in range(2):
+                            if use_priority:
+                                network.train_step(learning_rate_schedule, beta_schedule)
+                            else:
+                                network.train_step(learning_rate_schedule)
+
+                        for _ in range(2):
+                            network.avg_policy_train_step(policy_learning_rate_schedule)
+
                     # terminate the collection of data if the controller shows stability
                     # for a long time. This is a good thing.
                     if steps > maximum_number_of_steps:
@@ -308,19 +325,7 @@ def run(**kwargs):
                 if networks[0].buffer.games_played >= 1:
                     break
 
-            # max: to cover all new steps added to buffer, min: to not overdo too much
-            for i,network in enumerate(networks):
-                for _ in range(min(max(maximum_number_of_steps/batch_size + 1,length_alive[i]/4), 12)): # learn every 4 frames, up to a total of 5 times.
-                    if use_priority:
-                        network.train_step(learning_rate_schedule, beta_schedule)
-                    else:
-                        network.train_step(learning_rate_schedule)
-
-                for _ in range(2):
-                    network.avg_policy_train_step(policy_learning_rate_schedule)
-
-                monitor.make_gifs(iteration)
-            
+            monitor.make_gifs(iteration)
             
             for count, writer in enumerate(summary_writers):
                 if count < (len(summary_writers) - 1):
@@ -349,6 +354,7 @@ def main():
     parser.add_argument('--mcts_iterations', '-mcts', type=int, default=1500)
     parser.add_argument('--batches_per_epoch', '-bpe', type=int, default=1)
     parser.add_argument('--buffer_size', '-bs', type=int, default=10000)
+    parser.add_argument('--reservoir_buffer_size', '-rbs', type=int, default=100000)
     parser.add_argument('--update_freq', '-uf', type=int, default=10000)
     parser.add_argument('--headless', '-hless', action='store_true')
     parser.add_argument('--use_priority', '-priority', action='store_true')
@@ -386,7 +392,8 @@ def main():
         update_freq=args.update_freq,
         buffer_size=args.buffer_size,
         use_priority=args.use_priority,
-        policy_batch_size=args.policy_batch_size)
+        policy_batch_size=args.policy_batch_size,
+        reservoir_buffer_size=args.reservoir_buffer_size)
 
 if __name__ == "__main__":
     main()

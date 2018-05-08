@@ -237,7 +237,8 @@ class SelfPlay(DQN):
                  priority_alpha = .5,
                  priority_eps = 1e-8,
                  _id = '0',
-                 policy_batch_size=32
+                 policy_batch_size=32,
+                 reservoir_buffer_size=100000
                  ):
     
         super(SelfPlay, self).__init__(sess,
@@ -261,7 +262,7 @@ class SelfPlay(DQN):
         self.avg_policy_scope = 'avg_policy_%s' % self.id 
         self.avg_policy_batch_size = policy_batch_size
         self.policy_epoch = 0
-        self.reservoir = Reservoir(1.1)
+        self.reservoir = Reservoir(1.1, reservoir_buffer_size)
         self.build_average_policy_network()
 
     def select_from_policy(self, state, epsilon, eta):
@@ -269,10 +270,11 @@ class SelfPlay(DQN):
         
         r = np.random.uniform()
         if (eta > 0) and (r <= eta): 
-            action = self.average_policy_select(state)
-        else:
             is_greedy = True
             action = self.greedy_select(state, epsilon)
+        else:
+            action = self.average_policy_select(state)
+            
 
         return action, is_greedy
 
