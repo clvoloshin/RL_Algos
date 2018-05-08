@@ -201,7 +201,7 @@ class PrioritizedHistory(History):
         '''
         return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-class Reservoir(object):
+class Reservoir(History):
     def __init__(self, delta, max_buffer_size):
         '''
         Reservoir Buffer used for Reservoir Sampling
@@ -212,10 +212,9 @@ class Reservoir(object):
                 If > 1 then exponential reservoir sampling
 
         '''                
-        # super(Reservoir, self).__init__(np.inf)
+        super(Reservoir, self).__init__(max_buffer_size)
         assert delta >= 1
         self.delta = delta
-        self.max_buffer_size = max_buffer_size
     
     def sample_proportional(self, k):
         idxs = range(k)
