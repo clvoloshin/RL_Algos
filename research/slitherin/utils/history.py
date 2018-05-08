@@ -265,7 +265,7 @@ class Reservoir(object):
         self.data.append(data)
         self.buffer_size += 1
 
-        if self.buffer_size = self.max_buffer_size:
+        if self.buffer_size == self.max_buffer_size:
             self.data.pop(0)
             self.buffer_size -= 1
             
