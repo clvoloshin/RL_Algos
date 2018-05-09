@@ -302,7 +302,7 @@ def run(**kwargs):
                                                         np.array(int(acts[i])))
 
                     # max: to cover all new steps added to buffer, min: to not overdo too much
-                    for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= networks[x].batch_size]:
+                    for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= min(networks[x].batch_size, networks[x].avg_policy_batch_size)]:
                         to_learn[network_id] = 0
                         network = networks[network_id]
                         for _ in range(2):
