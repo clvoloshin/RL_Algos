@@ -217,17 +217,22 @@ class Reservoir(History):
         self.delta = delta
     
     def sample_proportional(self, k):
-        idxs = range(k)
 
-        number_seen = k
-        for j in range(k+1, self.buffer_size):
-            if np.random.uniform() < (k/(self.delta * number_seen)):
-                idx_to_replace = np.random.choice(range(k), 1)
-                idxs[idx_to_replace[0]] = j
+        denom = .1*self.delta * self.buffer_size
+        probs = [np.exp(-(x)/denom) for x in range(self.buffer_size,0,-1)] #basically boltzmann
+        return np.random.choice(np.arange(self.buffer_size), size=k, p=probs/sum(probs))
 
-            number_seen += 1
+        # Trad approach
+        # idxs = range(k)
 
-        return np.array(idxs)
+        # for j in range(k+1, self.buffer_size):
+        #     if np.random.uniform() < (k/(self.delta * self.buffer_size)):
+        #         idx_to_replace = np.random.choice(range(k), 1)
+        #         idxs[idx_to_replace[0]] = j
+
+        #     number_seen += 1
+
+        # return np.array(idxs)
 
     def unpack(self, idxs):
         data = np.array(self.data)[idxs]
