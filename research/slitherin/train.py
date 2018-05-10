@@ -235,7 +235,6 @@ def run(**kwargs):
                 if (((networks[0].buffer.games_played) % 10) == 0):
                     print 'Epoch: %s. Game number: %s' % (iteration, networks[0].buffer.games_played)
                 obs = env.reset()
-                epsilon_schedule.reset()
 
                 # raw_observations = []
                 # raw_observations.append(np.array(obs))
@@ -251,6 +250,9 @@ def run(**kwargs):
                 viewer = None
 
                 length_alive = np.array([0] * env.n_actors)
+                game_time = time.time()
+                action_times = []
+                learn_times = []
                 while not done_n.all():
 
                     if animate_episode:
@@ -277,11 +279,12 @@ def run(**kwargs):
                     # Control the exploration
                     acts = []
                     is_greedys = []
+                    action_time = time.time()
                     for i, network in enumerate(networks):
                         act, is_greedy = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch), eta_schedule.value(network.epoch)) 
                         acts += [str(act[0])]
                         is_greedys.append(is_greedy)
-          
+                    action_times.append(time.time()-action_time)
                     # Next step
                     obs, reward_n, done_n = env.step(acts)
 
@@ -302,6 +305,7 @@ def run(**kwargs):
                                                         np.array(int(acts[i])))
 
                     # max: to cover all new steps added to buffer, min: to not overdo too much
+                    learn_time = time.time()
                     for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= min(networks[x].batch_size, networks[x].avg_policy_batch_size)]:
                         to_learn[network_id] = 0
                         network = networks[network_id]
@@ -314,6 +318,7 @@ def run(**kwargs):
                         for _ in range(2):
                             network.avg_policy_train_step(policy_learning_rate_schedule)
 
+                    learn_times.append(time.time()-learn_time)
                     # terminate the collection of data if the controller shows stability
                     # for a long time. This is a good thing.
                     if steps > maximum_number_of_steps:
@@ -325,15 +330,30 @@ def run(**kwargs):
                 if networks[0].buffer.games_played >= 1:
                     break
 
+            game_time = time.time() - game_time
             monitor.make_gifs(iteration)
             
-            for count, writer in enumerate(summary_writers):
-                if count < (len(summary_writers) - 1):
-                    summary = tf.Summary()
-                    summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
-                    summary.value.add(tag='Steps Taken', simple_value=(length_alive[count]))
-                    writer.add_summary(summary, iteration)
+            for count, writer in enumerate(summary_writers[:-1]):
+                summary = tf.Summary()
+                summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
+                summary.value.add(tag='Steps Taken', simple_value=(length_alive[count]))
+                writer.add_summary(summary, iteration)
                 writer.flush()
+
+            summary = tf.Summary()
+            summary.value.add(tag='Time Elapsed/Game', simple_value=game_time)
+            summary.value.add(tag='Time Elapsed/Total Actions', simple_value=np.sum(action_times))
+            summary.value.add(tag='Time Elapsed/Mean Actions', simple_value=np.mean(action_times))
+            summary.value.add(tag='Time Elapsed/Max Actions', simple_value=np.max(action_times))
+            summary.value.add(tag='Time Elapsed/Min Actions', simple_value=np.min(action_times))
+            summary.value.add(tag='Time Elapsed/Total Learn', simple_value=np.sum(learn_times))
+            summary.value.add(tag='Time Elapsed/Mean Learn', simple_value=np.mean(learn_times))
+            summary.value.add(tag='Time Elapsed/Max Learn', simple_value=np.max(learn_times))
+            summary.value.add(tag='Time Elapsed/Min Learn', simple_value=np.min(learn_times))
+            summary_writers[-1].add_summary(summary, iteration)
+            summary_writers[-1].flush()
+
+            print game_time, sum(action_times), sum(learn_times)
                     
             
 
