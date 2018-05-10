@@ -281,9 +281,14 @@ def run(**kwargs):
                     is_greedys = []
                     action_time = time.time()
                     for i, network in enumerate(networks):
-                        act, is_greedy = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch), eta_schedule.value(network.epoch)) 
-                        acts += [str(act[0])]
-                        is_greedys.append(is_greedy)
+                        if env.world.idxs_of_alive_snakes[i]:
+                            act, is_greedy = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch), eta_schedule.value(network.epoch)) 
+                            acts += [str(act[0])]
+                            is_greedys.append(is_greedy)
+                        else:
+                            acts += [str(0)]
+                            is_greedys.append(False)
+                            
                     action_times.append(time.time()-action_time)
                     # Next step
                     obs, reward_n, done_n = env.step(acts)
@@ -300,7 +305,7 @@ def run(**kwargs):
                                       np.array(get_data(obs, i)), #new state
                                       np.array(done_n[i]) #done
                                       )
-                        if True: #is_greedys[i]:
+                        if is_greedys[i]:
                             networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
                                                         np.array(int(acts[i])))
 

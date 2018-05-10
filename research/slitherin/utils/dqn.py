@@ -279,7 +279,7 @@ class SelfPlay(DQN):
         return action, is_greedy
 
     def average_policy_select(self, obs):
-        policy = self.sess.run(tf.nn.softmax(self.logits), {self.policy_state: obs, self.training:False } )[0]
+        policy = self.sess.run(self.probs, {self.policy_state: obs, self.training:False } )[0]
         action = np.random.choice(range(self.n_actions), p=policy)
 
         return [action]
@@ -292,6 +292,7 @@ class SelfPlay(DQN):
             self.policy_training = tf.placeholder(tf.bool, name='training_flag')
 
             self.logits = self.model(self.policy_state, self.policy_training, self.n_actions, scope='net')            
+            self.probs = tf.nn.softmax(self.logits)
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels = self.policy_action, logits=self.logits)
             loss = tf.reduce_mean(loss) 
             
