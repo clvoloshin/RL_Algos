@@ -327,7 +327,8 @@ def run(**kwargs):
                                 network.train_step(learning_rate_schedule)
 
                         for _ in range(2):
-                            network.avg_policy_train_step(policy_learning_rate_schedule)
+                            if network.reservoir.buffer_size > 0:
+                                network.avg_policy_train_step(policy_learning_rate_schedule)
 
                     learn_times.append(time.time()-learn_time)
                     # terminate the collection of data if the controller shows stability
