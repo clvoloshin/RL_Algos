@@ -220,7 +220,7 @@ class Reservoir(History):
 
         denom = .1*self.delta * self.buffer_size
         probs = [np.exp(-(x)/denom) for x in range(self.buffer_size,0,-1)] #basically boltzmann
-        return np.random.choice(np.arange(self.buffer_size), size=k, p=probs/sum(probs))
+        return np.random.choice(np.arange(self.buffer_size), size=k, p=np.array(probs)/sum(probs))
 
         # Trad approach
         # idxs = range(k)
