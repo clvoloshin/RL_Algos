@@ -136,12 +136,12 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*7/10, .2, 0.001)
+        epsilon_schedule = LinearSchedule(iterations*7/10, .5, 0.001)
         eta_schedule = LinearSchedule(iterations*7/10, 0.2, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
-        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(20000,5e-4),(50000,1e-4)], outside_value=1e-4)
-        policy_learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(4000,5e-4),(15000,1e-4)], outside_value=1e-4)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(15000,5e-4),(30000,1e-4)], outside_value=1e-4)
+        policy_learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(4000,5e-4),(20000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
         # summary_writer = tf.summary.FileWriter(logdir) 
@@ -253,6 +253,15 @@ def run(**kwargs):
                 game_time = time.time()
                 action_times = []
                 learn_times = []
+
+                select_from_average = np.array([True] * env.n_actors)
+
+                for idx in range(select_from_average.shape[0]):
+                    r = np.random.uniform()
+                    eta = eta_schedule.value(iteration)
+                    if (eta > 0) and (r <= eta): 
+                        select_from_average[idx] = False # Sample from greedy
+
                 while not done_n.all():
 
                     if animate_episode:
@@ -278,16 +287,13 @@ def run(**kwargs):
 
                     # Control the exploration
                     acts = []
-                    is_greedys = []
                     action_time = time.time()
                     for i, network in enumerate(networks):
                         if env.world.snakes[i].alive:
-                            act, is_greedy = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(network.epoch), eta_schedule.value(network.epoch)) 
+                            act = network.select_from_policy(np.array([[x.A for x in get_data(last_obs, i)]]), epsilon_schedule.value(iteration), select_from_average[i]) 
                             acts += [str(act[0])]
-                            is_greedys.append(is_greedy)
                         else:
                             acts += [str(0)]
-                            is_greedys.append(False)
 
                     action_times.append(time.time()-action_time)
                     # Next step
@@ -305,7 +311,7 @@ def run(**kwargs):
                                       np.array(get_data(obs, i)), #new state
                                       np.array(done_n[i]) #done
                                       )
-                        if is_greedys[i]:
+                        if not select_from_average[i]:
                             networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
                                                         np.array(int(acts[i])))
 

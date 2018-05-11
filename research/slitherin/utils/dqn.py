@@ -265,18 +265,13 @@ class SelfPlay(DQN):
         self.reservoir = Reservoir(1.1, reservoir_buffer_size)
         self.build_average_policy_network()
 
-    def select_from_policy(self, state, epsilon, eta):
-        is_greedy = False
-        
-        r = np.random.uniform()
-        if (eta > 0) and (r <= eta): 
-            is_greedy = True
-            action = self.greedy_select(state, epsilon)
-        else:
+    def select_from_policy(self, state, epsilon, sample_from_average):
+        if sample_from_average: 
             action = self.average_policy_select(state)
+        else:
+            action = self.greedy_select(state, epsilon)
             
-
-        return action, is_greedy
+        return action
 
     def average_policy_select(self, obs):
         policy = self.sess.run(self.probs, {self.policy_state: obs, self.training:False } )[0]
