@@ -17,30 +17,9 @@ from utils.dqn import DQN, SelfPlay
 from utils.monitor import Monitor
 from utils.schedules import LinearSchedule, PiecewiseSchedule
 
-# def get_data(obs):
-#     assert obs.shape[0] < 3
-#     data = obs#[:,:-1]
-#     if obs.shape[0] == 2:
-#         data = np.vstack([data, np.diff(data,axis=0)])
-#     else:
-#         data = np.vstack([data, np.array([[sparse.csr_matrix(data[0][0].shape) for _ in range(data.shape[1]) ]]) ])
-
-#     # only care about X_i and delta X_i
-#     data = data[-2:]
-
-#     player_idx = []
-#     for idx in range(data.shape[1]-1):
-#         idxs = np.array([False]*(data.shape[1]))
-#         idxs[idx] = True
-#         player_idx.append(np.hstack([data[:,idxs].reshape(-1), data[:,~idxs].T.reshape(-1)])) # Transpose so that you get column ordering rather than row ordering (C vs Fortran)
-
-#     return np.vstack(player_idx)
-
 def get_data(obs, actor):
     assert ((len(obs) % 2) == 1)
     return obs[actor*2:((actor+1)*2)] + obs[:actor*2] + obs[((actor+1)*2):]
-
-
 
 def repeat_upsample(rgb_array, k=1, l=1, err=[]):
     # repeat kinda crashes if k/l are zero
@@ -136,8 +115,8 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*7/10, .5, 0.001)
-        eta_schedule = LinearSchedule(iterations*7/10, 0.2, 0.1)
+        epsilon_schedule = LinearSchedule(iterations*95/100, .5, 0.001)
+        eta_schedule = LinearSchedule(iterations*95/100, 0.4, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
         learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(15000,5e-4),(30000,1e-4)], outside_value=1e-4)
@@ -320,7 +299,7 @@ def run(**kwargs):
                     for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= min(networks[x].batch_size, networks[x].avg_policy_batch_size)]:
                         to_learn[network_id] = 0
                         network = networks[network_id]
-                        for _ in range(2):
+                        for _ in range(5):
                             if use_priority:
                                 network.train_step(learning_rate_schedule, beta_schedule)
                             else:
