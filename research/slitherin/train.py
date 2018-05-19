@@ -115,7 +115,7 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*95/100, .5, 0.001)
+        epsilon_schedule = LinearSchedule(iterations*95/100, 1., 0.001)
         eta_schedule = LinearSchedule(iterations*95/100, 0.4, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
