@@ -296,7 +296,7 @@ def run(**kwargs):
 
                     # max: to cover all new steps added to buffer, min: to not overdo too much
                     learn_time = time.time()
-                    for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= min(networks[x].batch_size, networks[x].avg_policy_batch_size)]:
+                    for network_id in [x for x in range(len(to_learn)) if to_learn[x] >= max(networks[x].batch_size, networks[x].avg_policy_batch_size)]:
                         to_learn[network_id] = 0
                         network = networks[network_id]
                         for _ in range(5):
@@ -305,7 +305,7 @@ def run(**kwargs):
                             else:
                                 network.train_step(learning_rate_schedule)
 
-                        for _ in range(2):
+                        for _ in range(3):
                             if network.reservoir.buffer_size > 0:
                                 network.avg_policy_train_step(policy_learning_rate_schedule)
 
