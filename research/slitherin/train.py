@@ -115,11 +115,11 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = LinearSchedule(iterations*95/100, 1., 0.001)
-        eta_schedule = LinearSchedule(iterations*95/100, 0.4, 0.1)
+        epsilon_schedule = PiecewiseSchedule([(0,1.),(50000,.1),(100000,.01)], outside_value=.01) #LinearSchedule(iterations*60/100, 1., 0.001)
+        eta_schedule = PiecewiseSchedule([(0,.2),(60000,.1)], outside_value=.1) #LinearSchedule(iterations*60/100, 0.2, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
-        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(15000,5e-4),(30000,1e-4)], outside_value=1e-4)
+        learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(30000,5e-4),(60000,1e-4)], outside_value=1e-4)
         policy_learning_rate_schedule = PiecewiseSchedule([(0,1e-3),(4000,5e-4),(20000,1e-4)], outside_value=1e-4)
 
         saver = tf.train.Saver(max_to_keep=2)
@@ -178,11 +178,18 @@ def run(**kwargs):
                 steps += 1
 
                 for i in env.world.idxs_of_alive_snakes:
+                    priority = networks[i].get_error(np.array(get_data(last_obs, i)), 
+                                                         np.array(acts[i]), 
+                                                         np.array(reward_n[i]), 
+                                                         np.array(get_data(obs, i)), 
+                                                         np.array(done_n[i]))
+
                     networks[i].store(np.array(get_data(last_obs, i)), # state
                                       np.array(acts[i]), # action
                                       np.array(reward_n[i]), #rewards
                                       np.array(get_data(obs, i)), #new state
-                                      np.array(done_n[i]) #done
+                                      np.array(done_n[i]), #done
+                                      priority = priority
                                       )
 
                     # networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
@@ -196,6 +203,8 @@ def run(**kwargs):
         print 'Filled Buffer'
 
         to_learn = np.array([0] * env.n_actors)
+        frames_seen = np.array([0] * env.n_actors)
+        
         for iteration in range(iteration_offset, iteration_offset + iterations + 1):
             print('{0} Iteration {1} {0}'.format('*'*10, iteration))
             networks[0].buffer.soft_reset()
@@ -283,12 +292,20 @@ def run(**kwargs):
                     total_number_of_steps_in_iteration += 1
                     steps += 1
 
+
                     for i in env.world.idxs_of_alive_snakes:
+                        priority = networks[i].get_error(np.array(get_data(last_obs, i)), 
+                                                         np.array(acts[i]), 
+                                                         np.array(reward_n[i]), 
+                                                         np.array(get_data(obs, i)), 
+                                                         np.array(done_n[i]))
+                        
                         networks[i].store(np.array(get_data(last_obs, i)), # state
                                       np.array(acts[i]), # action
                                       np.array(reward_n[i]), #rewards
                                       np.array(get_data(obs, i)), #new state
-                                      np.array(done_n[i]) #done
+                                      np.array(done_n[i]), #done
+                                      priority = priority
                                       )
                         if not select_from_average[i]:
                             networks[i].store_reservoir(np.array(get_data(last_obs, i)), # state
@@ -300,6 +317,7 @@ def run(**kwargs):
                         to_learn[network_id] = 0
                         network = networks[network_id]
                         for _ in range(5):
+                            frames_seen[network_id] += networks[network_id].batch_size
                             if use_priority:
                                 network.train_step(learning_rate_schedule, beta_schedule)
                             else:
@@ -328,6 +346,7 @@ def run(**kwargs):
                 summary = tf.Summary()
                 summary.value.add(tag='Average Reward', simple_value=(total_reward[count]))
                 summary.value.add(tag='Steps Taken', simple_value=(length_alive[count]))
+                summary.value.add(tag='Frames Seen', simple_value=frames_seen[count])
                 writer.add_summary(summary, iteration)
                 writer.flush()
 

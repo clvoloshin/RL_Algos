@@ -5,6 +5,7 @@ from history import History, PrioritizedHistory, Reservoir
 
 def huber_loss(x, delta=1.0):
     """Reference: https://en.wikipedia.org/wiki/Huber_loss"""
+    ''' Taken from OpenAi '''
     return tf.where(
         tf.abs(x) < delta,
         tf.square(x) * 0.5,
@@ -149,8 +150,11 @@ class DQN(object):
             self.summarize = tf.summary.merge([self.loss_summary, self.Q_summary])
             
     
-    def store(self, state, action, reward, next_state, done):
-        self.buffer.append(obs=state, actions=action, rewards=reward, new_obs=next_state, done=done)
+    def store(self, state, action, reward, next_state, done, priority = None):
+        if priority:
+            self.buffer.append(obs=state, actions=action, rewards=reward, new_obs=next_state, done=done, priority= priority)
+        else:
+            self.buffer.append(obs=state, actions=action, rewards=reward, new_obs=next_state, done=done)
 
     def store_reservoir(self, state, action):
         self.reservoir.append(obs=state, actions=action)
@@ -217,6 +221,16 @@ class DQN(object):
         
         self.epoch += 1
 
+    def get_error(self, obs, act, rew, new_obs, done, is_sparse = True):
+        assert isinstance(self.buffer, PrioritizedHistory), "This method should only be called if using PrioritizedHistory Buffer"
+        assert rew.reshape(-1).shape[0] == 1, "Should only be receiving 1 point"
+        if is_sparse:
+            obs = np.array([x.A for x in obs])
+            new_obs = np.array([x.A for x in new_obs])
+
+        td_errors = self.sess.run([self.error], { self.state: [obs], self.next_state: [new_obs], self.action: act.reshape(-1).astype(int), self.done: done.reshape(-1), self.reward: rew.reshape(-1), self.training: True} )
+
+        return (np.abs(td_errors) + self.buffer.priority_eps)[0][0]
 
 class SelfPlay(DQN):
     def __init__(self,

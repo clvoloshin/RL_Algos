@@ -127,9 +127,9 @@ class PrioritizedHistory(History):
         idx = self.next_idx
         super(PrioritizedHistory, self).append(*args, **kwargs)
         try:
-            self.priorities[idx] = self.max_priority ** self.alpha
+            self.priorities[idx] = kwargs['priority'] ** self.alpha #self.max_priority ** self.alpha
         except:
-            self.priorities.append(self.max_priority ** self.alpha)
+            self.priorities.append(kwargs['priority'] ** self.alpha )
 
     def sample_proportional(self, N):
         # More efficient w tree if buffer_size is large, as in paper/openAi implementation
