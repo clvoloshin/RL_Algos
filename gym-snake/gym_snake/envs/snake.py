@@ -70,8 +70,11 @@ class Snake(object):
             new_direction: str
                 A key to the action_space dictionary holding new (x,y) direction
         '''
-        if not self.are_opposites(self, self.heading, self.action_space[new_direction]):
-            self.heading = self.action_space[new_direction]
+        
+        # This if statement imposes that a snake not turn around on itself. 
+        # Should snake learn this itelf? I think yes.
+        #if not self.are_opposites(self, self.heading, self.action_space[new_direction]):
+        self.heading = self.action_space[new_direction]
 
     @staticmethod
     def are_opposites(snake, action, new_action):

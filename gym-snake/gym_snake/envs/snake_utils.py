@@ -219,7 +219,7 @@ def get_state(snakes, all_food, num_rows, num_cols, growth):
 
     food_to_add = len(idxs_of_alive_snakes) - len(all_food) # Make only as much food as alive snakes
     
-    # Handle infinite loop that happens at the end of game
+    # +Handles infinite loop that happens at the end of game
     while (total_board.nnz <= ((total_board.shape[0]-2)*(total_board.shape[0]-2))-1) and (food_to_add > 0):
         start_x_loc = np.random.randint(1, num_rows-1, size = 1)
         start_y_loc = np.random.randint(1, num_cols-1, size = 1)

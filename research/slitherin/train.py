@@ -96,7 +96,7 @@ def run(**kwargs):
         for i in range(env.n_actors):
             networks.append( SelfPlay( 
                      sess,
-                     create_basic([128,128,256], transpose=True),
+                     create_basic([64,64,256], transpose=True),
                      [(env.n_actors)*2 + 1, env.world.screen_width,env.world.screen_height], 
                      summary_writers[-1],
                      n_actions=4, 
@@ -115,7 +115,7 @@ def run(**kwargs):
                      ) ) 
 
         monitor = Monitor(os.path.join(logdir,'gifs'))
-        epsilon_schedule = PiecewiseSchedule([(0,1.),(50000,.1),(100000,.01)], outside_value=.01) #LinearSchedule(iterations*60/100, 1., 0.001)
+        epsilon_schedule = PiecewiseSchedule([(0,1.),(50000,.1),(75000,.001)], outside_value=.001) #LinearSchedule(iterations*60/100, 1., 0.001)
         eta_schedule = PiecewiseSchedule([(0,.2),(60000,.1)], outside_value=.1) #LinearSchedule(iterations*60/100, 0.2, 0.1)
         if use_priority:
             beta_schedule = LinearSchedule(iterations, 0.4, 1.)
@@ -323,7 +323,7 @@ def run(**kwargs):
                             else:
                                 network.train_step(learning_rate_schedule)
 
-                        for _ in range(3):
+                        for _ in range(5):
                             if network.reservoir.buffer_size > 0:
                                 network.avg_policy_train_step(policy_learning_rate_schedule)
 
