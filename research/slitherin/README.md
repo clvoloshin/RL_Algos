@@ -26,7 +26,7 @@ python train_single.py --iterations 10000 -seq 200 --animate -gpe 1 -bpe 1 -b 12
 
 ## 2 Snake
 
-TBA.
+Currently under work in the two-snake branch. TBA.
 
 ## 1 Snake
 
