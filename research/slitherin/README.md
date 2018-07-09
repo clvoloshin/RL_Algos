@@ -12,7 +12,7 @@ The food is green: (0,255,0)
 
 ## Replication
 
-To replicate: Clone the directory and follow the following:
+To replicate: Clone the directory and follow the following: (use -hless flag for headless server if you dont have a display)
 ~~~
 pip install gym
 cd /dir/RL_Algos/gym-snake
@@ -21,8 +21,16 @@ cd /dir/RL_Algos/research/slitherin
 pip install -e .
 python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3  -hless
 python train_single.py --iterations 10000 -seq 200 --animate -gpe 1 -bpe 1 -b 128 -uf 500 -bs 100000 --seed 5 -hless
+
+Tensorboard:
+tensorboard --logdir=./output/SnakeEnv/<seed number here>/
+
+Gifs:
+ls ./output/SnakeEnv/<seed number here>/gifs/
 ~~~
 *Make sure you you specify the correct directory for /dir/*
+
+
 
 ## 2 Snake
 
