@@ -127,9 +127,9 @@ class PrioritizedHistory(History):
         idx = self.next_idx
         super(PrioritizedHistory, self).append(*args, **kwargs)
         try:
-            self.priorities[idx] = self.max_priority ** self.alpha
+            self.priorities[idx] = kwargs['priority'] ** self.alpha #self.max_priority ** self.alpha
         except:
-            self.priorities.append(self.max_priority ** self.alpha)
+            self.priorities.append(kwargs['priority'] ** self.alpha )
 
     def sample_proportional(self, N):
         # More efficient w tree if buffer_size is large, as in paper/openAi implementation
@@ -200,3 +200,83 @@ class PrioritizedHistory(History):
         Returns [\sum_{i=0}^T x[i] * gamma^i, \sum_{i=1}^T x[i] gamma^{i-1}, ...]
         '''
         return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+
+class Reservoir(History):
+    def __init__(self, delta, max_buffer_size):
+        '''
+        Reservoir Buffer used for Reservoir Sampling
+
+        Param
+            delta: float >= 1 (beta in the paper. Not to be confused w Prioritized buffer beta)
+                If = 1 then uniform reservoir sampling
+                If > 1 then exponential reservoir sampling
+
+        '''                
+        super(Reservoir, self).__init__(max_buffer_size)
+        assert delta >= 1
+        self.delta = delta
+    
+    def sample_proportional(self, k):
+
+        denom = .1*self.delta * self.buffer_size
+        probs = [np.exp(-(x)/denom) for x in range(self.buffer_size,0,-1)] #basically boltzmann
+        return np.random.choice(np.arange(self.buffer_size), size=k, p=np.array(probs)/sum(probs))
+
+        # Trad approach
+        # idxs = range(k)
+
+        # for j in range(k+1, self.buffer_size):
+        #     if np.random.uniform() < (k/(self.delta * self.buffer_size)):
+        #         idx_to_replace = np.random.choice(range(k), 1)
+        #         idxs[idx_to_replace[0]] = j
+
+        #     number_seen += 1
+
+        # return np.array(idxs)
+
+    def unpack(self, idxs):
+        data = np.array(self.data)[idxs]
+        obs, act = data[:,0],data[:,1]
+
+        obs, acts = np.vstack(obs), np.hstack(act)
+        return obs, acts
+
+    def sample(self, k, is_sparse=True):
+        '''
+            p_k ~= k/(beta*buffer_size) (assuming e^(-x) = 1-x for x small)
+        '''
+
+        k = min(k, self.buffer_size)
+        idxs = self.sample_proportional(k)
+        
+        if idxs.shape[0]:
+            obs, acts = self.unpack(idxs)
+        else:
+            return None, None
+
+        if is_sparse:
+            return np.array([[x.A for x in y] for y in obs]), acts
+        else:
+            return obs, acts
+
+    def append(self,**kwargs):
+        
+
+        observations = kwargs['obs']
+        actions = kwargs['actions']
+        
+        data = (observations, actions)
+        self.data.append(data)
+        self.buffer_size += 1
+
+        if self.buffer_size == self.max_buffer_size:
+            self.data.pop(0)
+            self.buffer_size -= 1
+            
+
+
+
+
+
+
+

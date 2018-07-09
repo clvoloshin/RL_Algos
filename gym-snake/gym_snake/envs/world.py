@@ -104,6 +104,7 @@ class SnakeWorld(object):
 
         # Replace reward for snakes that just died
         self.rewards_n = np.array(self.rewards_n)
+
         self.rewards_n[(last_done_n ^ self.done_n)] = self.reward_space['die']
 
         return self.state, self.rewards_n, self.done_n
@@ -124,17 +125,19 @@ class SnakeWorld(object):
             start_y_loc = np.random.randint(1, self.screen_height-1, size = self.number_of_snakes + self.start_number_of_food)
             starting_locs = list(set(zip(start_x_loc, start_y_loc)))
 
-        # Instantiate snakes with fixed color
-        self.snakes = [Snake(self.action_space,
+        
+        if self.number_of_snakes == 1:
+            # Instantiate snakes with fixed color
+            self.snakes = [Snake(self.action_space,
                              start_x = starting_locs[idx][0], 
                              start_y = starting_locs[idx][1], 
                              color = [0,0,1]) for idx in range(self.number_of_snakes)]#np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
-
-        # Instatitate snakes with random color
-        # self.snakes = [Snake(self.action_space,
-        #                      start_x = starting_locs[idx][0], 
-        #                      start_y = starting_locs[idx][1], 
-        #                      color = np.random.uniform(size=3)) for idx in range(self.number_of_snakes-1, self.number_of_snakes)] + self.snakes
+        else:
+            #Instatitate snakes with random color
+            self.snakes = [Snake(self.action_space,
+                             start_x = starting_locs[idx][0], 
+                             start_y = starting_locs[idx][1], 
+                             color = np.random.uniform(size=3)) for idx in range(self.number_of_snakes)]
 
         # Instatiate Food
         self.food = [Food(start_x = starting_locs[idx][0],

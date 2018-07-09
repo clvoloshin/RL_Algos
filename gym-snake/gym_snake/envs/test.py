@@ -1,4 +1,5 @@
-import snake_env
+import gym
+import gym_snake
 import pdb
 import time
 import numpy as np
@@ -81,9 +82,11 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 
     return np.repeat(np.repeat(rgb_array, k, axis=0), l, axis=1)
 
+np.random.seed(5)
 scaler = 10
 viewer = rendering.SimpleImageViewer()
-env = snake_env.SnakeEnv(screen_width = 40/scaler, screen_height = 40/scaler)
+env = gym.make('snake-v1') # Make the gym environment
+
 
 key = curses.KEY_RIGHT
 for j in range(10):
@@ -97,14 +100,17 @@ for j in range(10):
         
         if len(env.world.idxs_of_alive_snakes):
             
-            
-            key = read_single_keypress()
+            try:
+                key1 = read_single_keypress()
+                key2 = read_single_keypress()
 
-            states_n, rewards_n, done_n = env.step([actions[key]])
-            print rewards_n, done_n 
-            rgb = env.render('rgb_array') 
-            upscaled=repeat_upsample(rgb,scaler,scaler)
-            viewer.imshow(upscaled)
-            time.sleep(.00000001)
+                states_n, rewards_n, done_n = env.step([actions[key1], actions[key2]])
+                print rewards_n, done_n 
+                rgb = env.render('rgb_array') 
+                upscaled=repeat_upsample(rgb,scaler,scaler)
+                viewer.imshow(upscaled)
+                time.sleep(.00000001)
+            except:
+                pdb.set_trace()
 
 
