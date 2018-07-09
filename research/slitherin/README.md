@@ -22,6 +22,10 @@ pip install -e .
 python train_simple.py --iterations 10000 -seq 100 --animate -gpe 1 -bpe 1 -b 64 -uf 500 -bs 100000 --seed 3  -hless
 python train_single.py --iterations 10000 -seq 200 --animate -gpe 1 -bpe 1 -b 128 -uf 500 -bs 100000 --seed 5 -hless
 
+two_snake:
+python train.py --iterations 100000 -seq 300 --animate -gpe 1 -bpe 1 -b 128 -uf 500 -bs 100000 -rbs 50000 --seed 17 --use_priority -hless
+(w/ reservoir buffer and prioritized experienced replay)
+
 Tensorboard:
 tensorboard --logdir=./output/SnakeEnv/<seed number here>/
 
