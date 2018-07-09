@@ -28,6 +28,13 @@ python train_single.py --iterations 10000 -seq 200 --animate -gpe 1 -bpe 1 -b 12
 
 Currently under work in the two_snake branch. TBA.
 
+My progress so far has been in implementing NFSP (https://arxiv.org/pdf/1603.01121.pdf) which have achieved the following results:
+
+<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/reward_93000_2_snake.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/steps_taken_93000_2_snake.png" width="250" height="150">,<img src="https://github.com/clvoloshin/RL_Algos/blob/master/research/slitherin/media/two_snake_93000_epoch.gif" width="250" height="150">
+
+My next thought to overcome instability is to make a main snake which learns while the other has a previous version of the main snake's weights, hence a weaker snake, updated every N iterations. This is slightly different than NFSP since in NFSP both snakes are learning a Nash equilibrium, while here the snake is learning to beat the previous best version of itself.
+
+
 ## 1 Snake
 
 I tried two different representations (preprocessing) for the 1 snake scenario: one that is natural and one less so but arguably more generalizable. My reinforcement learning algorithm of choice was Double DQN in both.
