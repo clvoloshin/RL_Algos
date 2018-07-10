@@ -1,4 +1,8 @@
-# Human Play
+# Classic Snake Game
+
+This is an implementation of the classic snake game into an OpenAi gym environment. It has been written to generalize to N snakes.
+
+## Human Play
 
 ~~~
 pip install gym
@@ -9,11 +13,11 @@ python test.py
 ~~~
 Use keys (w,a,s,d) for (up, left, down, right) respectively.
 
-# Computer Self Play
+## Computer Self Play
 
 See ../research/slitherin
 
-# Snake Implementation
+## Implementation
 
 There are two Snake games available:
   1. snake-v0: 
