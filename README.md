@@ -1,7 +1,7 @@
 # RL_Algos
 OpenAI Requests for Research & Replicating Some Reinforcement Algorithms
 
-For Slitherin' from OpenAI Request for Research 2.0 see /research/slitherin/
+*For Slitherin' from OpenAI Request for Research 2.0 see /research/slitherin/*
 
 For a quick replication of REINFORCE algorithm, see reinforce.py
 Example use:
