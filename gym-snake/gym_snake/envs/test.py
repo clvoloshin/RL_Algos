@@ -85,7 +85,7 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 np.random.seed(5)
 scaler = 10
 viewer = rendering.SimpleImageViewer()
-env = gym.make('snake-v1') # Make the gym environment
+env = gym.make('snake-v0') # Make the gym environment
 
 
 key = curses.KEY_RIGHT
