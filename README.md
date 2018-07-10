@@ -3,7 +3,7 @@
 ## Directory Key
 
  1. ./research/slitherin/: Slitherin' from OpenAI Request for Research 2.0 (computer self-play of classic snake game)
- 2. ./gym-snake: classic snake game environment)
+ 2. ./gym-snake: classic snake game environment
  3. ./reinforce.py is a quick replication of a classic RL algorithm: REINFORCE
 
 ## Replicating Some Reinforcement Algorithms
