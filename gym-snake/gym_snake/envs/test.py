@@ -5,12 +5,23 @@ import time
 import numpy as np
 from gym.envs.classic_control import rendering
 import curses
+import sys
 
 '''
 THIS IS A HACKY SCRIPT TO PLAY SNAKE BY HAND.
 '''
 
-
+which_game = 0
+while not which_game:
+    which_game = raw_input("Press a for single snake, b for multi-snake, q for exit: ")
+    if which_game == 'q':
+        sys.exit()
+    if which_game == 'a':
+        which_game = 0
+        break
+    if which_game == 'b':
+        which_game = 1
+        break
 
 actions = {
     'w':    '0',
@@ -85,7 +96,7 @@ def repeat_upsample(rgb_array, k=1, l=1, err=[]):
 np.random.seed(5)
 scaler = 10
 viewer = rendering.SimpleImageViewer()
-env = gym.make('snake-v0') # Make the gym environment
+env = gym.make('snake-v%s' % which_game) # Make the gym environment
 
 
 key = curses.KEY_RIGHT
@@ -102,9 +113,14 @@ for j in range(10):
             
             try:
                 key1 = read_single_keypress()
-                key2 = read_single_keypress()
+                if which_game == 1:
+                    key2 = read_single_keypress()
 
-                states_n, rewards_n, done_n = env.step([actions[key1], actions[key2]])
+                if which_game == 0:
+                    states_n, rewards_n, done_n = env.step([actions[key1]])
+                if which_game == 1:
+                    states_n, rewards_n, done_n = env.step([actions[key1], actions[key2]])
+
                 print rewards_n, done_n 
                 rgb = env.render('rgb_array') 
                 upscaled=repeat_upsample(rgb,scaler,scaler)
