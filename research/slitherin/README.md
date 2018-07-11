@@ -51,8 +51,9 @@ The setup is similar to the 1-snake generalizable setup (see below) except the b
 Interestingly, when one snake dies too quickly, the 2-snake problem becomes the one snake problem, yet the same structure that worked in the 1-snake game seems to fail in the 2-snake game. A 2-snake strategy may not be a great strategy for a one-snake case, so once the other snake died, perhaps the alive snake didn’t see enough frames to overcome its newly sub-par strategy.  In addition to the memory effect, the learning appears to have plateaued (per loss plot). Perhaps the breakdown of the effectiveness of the 1-snake structure in the 2-snake case may be related to the size of the board--it may be worth to go back to the 1-snake game with a bigger board to see if the networks' filters are too small in the early layers. 
 
 
-Finally, my next thought to overcome instability is to make a main snake which learns while the other has a previous version of the main snake's weights, hence a weaker snake, updated every N iterations. This would eliminate the 'falling behind' problem noted above. This is slightly different than NFSP since in NFSP both snakes are learning a Nash equilibrium, while here the snake is learning to beat the previous best version of itself.
+My next thought to overcome instability is to make a main snake which learns while the other has a previous version of the main snake's weights, hence a weaker snake, updated every N iterations. This would eliminate the 'falling behind' problem noted above. This is slightly different than NFSP since in NFSP both snakes are learning a Nash equilibrium, while here the snake is learning to beat the previous best version of itself.
 
+Finally, another potentially promising next step is to adapt MCTS to simultanous moves which would make training faster and create stronger policies.
 
 ## 1 Snake
 
